@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Sensors</string>
+    <string name="title">Sensors</string>
+    <string name="description">Description</string>
+
+    <string name="label_light">Data: %1$.2f lux</string>
+    <string name="label_magnetic">X: %1$.2f uT\nY: %2$.2f uT\nZ: %3$.2f uT</string>
+    <string name="label_battery">Data: %1$.2</string>
+
+    <!-- error message if sensors are not available. -->
+    <string name="error_no_sensor">No sensor</string>
+</resources>
