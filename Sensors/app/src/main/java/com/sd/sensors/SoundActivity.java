@@ -1,19 +1,14 @@
 package com.sd.sensors;
 
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.pm.PackageManager;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraManager;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AlertDialog;
+import android.media.MediaPlayer;
+import android.media.AudioManager;
 
 import android.provider.Settings;
-import android.widget.CompoundButton;
 import android.widget.TextView;
-import android.widget.ToggleButton;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -27,17 +22,14 @@ import java.util.Date;
 
 import android.util.Log;
 
-public class LedActivity extends AppCompatActivity {
+public class SoundActivity extends AppCompatActivity {
 
-    private CameraManager mCameraManager;
-    private String mCameraId;
-    // private ToggleButton toggleButton;
-
-    final String STRING_SENSOR_TYPE = "LED";
+    final String STRING_SENSOR_TYPE = "SOUND";
 
     private String deviceID;
 
     private boolean currentValue = false;
+    private int currentVolume = 0;
 
     private boolean active = false;
 
@@ -58,12 +50,22 @@ public class LedActivity extends AppCompatActivity {
 
     private int localPort;
 
+    private int length;
+
+    MediaPlayer mediaPlayer = null;
+    AudioManager audioManager = null;
+
     SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_led);
+        setContentView(R.layout.activity_sound);
+
+        audioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
+        currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+        mediaPlayer = MediaPlayer.create(SoundActivity.this, R.raw.sound);
+        mediaPlayer.setLooping(true);
 
         mTextLastSent = findViewById(R.id.label_last_time);
         mTextLastSent.setText("No messages sent");
@@ -82,31 +84,14 @@ public class LedActivity extends AppCompatActivity {
             System.out.println("SE: " + e.getMessage());
         }
 
+        mTextCurrentValue.post(new Runnable() {
+            public void run() {
+                mTextCurrentValue.setText("OFF\nVOLUME: " + currentVolume);
+            }
+        });
+
         DataSendThread();
         UDPListener();
-
-        boolean isFlashAvailable = getApplicationContext().getPackageManager()
-                .hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
-
-        if (!isFlashAvailable) {
-            showNoFlashError();
-        }
-
-        mCameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        try {
-            mCameraId = mCameraManager.getCameraIdList()[0];
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-
-        /*toggleButton = findViewById(R.id.togglebutton);
-
-        toggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                switchFlashLight(isChecked);
-            }
-        });*/
 
         WifiManager wifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifi != null){
@@ -125,35 +110,15 @@ public class LedActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         active = false;
-        switchFlashLight(false);
+        if (mediaPlayer != null) mediaPlayer.release();
         super.onStop();
     }
 
     @Override
     protected void onDestroy() {
         lock.release();
+        if (mediaPlayer != null) mediaPlayer.release();
         super.onDestroy();
-    }
-
-    public void showNoFlashError() {
-        AlertDialog alert = new AlertDialog.Builder(this)
-                .create();
-        alert.setTitle("Oops!");
-        alert.setMessage("Flash not available in this device...");
-        alert.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int which) {
-                finish();
-            }
-        });
-        alert.show();
-    }
-
-    public void switchFlashLight(boolean status) {
-        try {
-            mCameraManager.setTorchMode(mCameraId, status);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
     }
 
     private void DataSendThread() {
@@ -170,35 +135,52 @@ public class LedActivity extends AppCompatActivity {
                         String msg_in
                                 = new String(data.getData(), 0, data.getLength());
                         String msg_out;
+                        boolean valid = false;
                         if (msg_in.equals("TOGGLE")) {
+                            valid = true;
+                            currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
                             currentValue = !currentValue;
-                            switchFlashLight(currentValue);
-                            if(currentValue) {
-                                msg_out = "ON";
+                            if (currentValue) {
+                                mediaPlayer.seekTo(length);
+                                mediaPlayer.start();
                             } else {
-                                msg_out = "OFF";
+                                mediaPlayer.pause();
+                                length = mediaPlayer.getCurrentPosition();
                             }
-                            if(gatewayAddr.size() > 0) {
-                                for(int i=0; i<gatewayAddr.size(); i++) {
-                                    aSocket.send(new DatagramPacket(msg_out.getBytes(),
-                                            msg_out.length(), gatewayAddr.get(i), gatewayPort));
+                        } else if(msg_in.equals("VOLUP")) {
+                            valid = true;
+                            audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                                    AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
+                        } else if(msg_in.equals("VOLDOWN")) {
+                            valid = true;
+                            audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                                    AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
+                        }
+                        if(valid && gatewayAddr.size() > 0) {
+                            currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                            if (currentValue) {
+                                msg_out = "ON," + currentVolume;
+                            } else {
+                                msg_out = "OFF," + currentVolume;
+                            }
+                            for(int i=0; i<gatewayAddr.size(); i++) {
+                                aSocket.send(new DatagramPacket(msg_out.getBytes(),
+                                        msg_out.length(), gatewayAddr.get(i), gatewayPort));
+                            }
+                            mTextLastSent.post(new Runnable() {
+                                public void run() {
+                                    mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
                                 }
-                                mTextLastSent.post(new Runnable() {
-                                    public void run() {
-                                        mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
+                            });
+                            mTextCurrentValue.post(new Runnable() {
+                                public void run() {
+                                    if(currentValue) {
+                                        mTextCurrentValue.setText("ON\nVOLUME: " + currentVolume);
+                                    } else {
+                                        mTextCurrentValue.setText("OFF\nVOLUME: " + currentVolume);
                                     }
-                                });
-                                mTextCurrentValue.post(new Runnable() {
-                                    public void run() {
-                                        if(currentValue) {
-                                            mTextCurrentValue.setText("ON");
-                                        } else {
-                                            mTextCurrentValue.setText("OFF");
-                                        }
-
-                                    }
-                                });
-                            }
+                                }
+                            });
                         }
                     }
                 } catch (SocketException e) {

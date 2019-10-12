@@ -64,19 +64,17 @@ async def unregister(websocket):
 
 async def counter(websocket, path):
     # register(websocket) sends user_event() to websocket
+    serverSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    serverSock.bind(("", 5004))
+
     await register(websocket)
     try:
         await websocket.send(state_event())
         async for message in websocket:
             data = json.loads(message)
-            if data["action"] == "minus":
-                STATE["value"] -= 1
-                await notify_state()
-            elif data["action"] == "plus":
-                STATE["value"] += 1
-                await notify_state()
-            else:
-                logging.error("unsupported event: {}", data)
+            for key, value in SENSORS.items():
+                if(value['sensor_id'] == data["sensor_id"]):
+                    serverSock.sendto(data["action"].encode(), key)
     finally:
         await unregister(websocket)
 
@@ -120,10 +118,10 @@ async def multicast_handler():
             sock.sendto('SERVER'.encode(), address)
         else:
             split = data.decode().split('_')
-            if(len(split) == 3):
-                device_id = split[0]
-                sensor_type = split[1]
-                sensor_port = int(split[2])
+            if(len(split) == 4 and split[0]=="SENSOR"):
+                device_id = split[1]
+                sensor_type = split[2]
+                sensor_port = int(split[3])
                 sensor_ip = address[0]
                 sensor_id = device_id + "_" + sensor_type
                 if(sensor_id not in SENSORS.keys()):
@@ -131,7 +129,7 @@ async def multicast_handler():
                 else:
                     SENSORS[(sensor_ip, sensor_port)]['last_msg_date'] = datetime.now().strftime("%H:%M:%S")
                 await notify_state()
-                print('New sensor identified: {}'.format(sensor_id))
+                print('Sensor identified: {}'.format(sensor_id))
 
 def data_listener_thread():
     loop = asyncio.new_event_loop()
@@ -152,13 +150,17 @@ async def udp_handler():
     while True:
         data, addr = serverSock.recvfrom(BUFFER_SIZE)
         if addr in SENSORS.keys():
+            SENSORS[addr]['last_msg_date'] = datetime.now().strftime("%H:%M:%S");
             if(SENSORS[addr]['type'] == 'LIGHT'):
                 SENSORS[addr]['data'] = float(data.decode("UTF-8"))
-                SENSORS[addr]['last_msg_date'] = datetime.now().strftime("%H:%M:%S");
             elif(SENSORS[addr]['type'] == 'MAGNETIC'):
                 split = data.decode("UTF-8").split(',')
                 SENSORS[addr]['data'] = {'x': split[0], 'y': split[1], 'z': split[2]}
-                SENSORS[addr]['last_msg_date'] = datetime.now().strftime("%H:%M:%S");
+            elif(SENSORS[addr]['type'] == 'LED'):
+                SENSORS[addr]['data'] = data.decode("UTF-8")
+            elif(SENSORS[addr]['type'] == 'SOUND'):
+                split = data.decode("UTF-8").split(',')
+                SENSORS[addr]['data'] = {'status': split[0], 'volume': split[1]}
         await notify_state()
         print("New UDP message from ", addr)
         print(data.decode("UTF-8"))

@@ -55,4 +55,10 @@ footer p {
 .measure {
   margin: auto;
   font-size: 1.3em;
+  text-align: center;
+}
+
+.no-sensors {
+  margin: auto;
+  font-size: 5.0em;
 }

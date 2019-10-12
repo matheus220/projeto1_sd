@@ -73,7 +73,6 @@ public class LightActivity extends AppCompatActivity implements SensorEventListe
         mTextLastSent.setText("No messages sent");
 
         DataSendThread();
-        UDPListener();
 
         deviceID = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
 
@@ -114,6 +113,8 @@ public class LightActivity extends AppCompatActivity implements SensorEventListe
         frequency = (double)1/(seekBar.getProgress() + 1);
         mTextFrequency = findViewById(R.id.textView);
         mTextFrequency.setText("Data sent every "+(seekBar.getProgress() + 1)+" second(s)");
+
+        UDPListener();
     }
 
     SeekBar.OnSeekBarChangeListener seekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
@@ -252,22 +253,31 @@ public class LightActivity extends AppCompatActivity implements SensorEventListe
                     mSocket.setTimeToLive(15);
                     groupAddress = InetAddress.getByName(groupAddr);
                     mSocket.joinGroup(groupAddress);
-                    String message = "SENSOR";
-                    DatagramPacket messageOut = new DatagramPacket(message.getBytes(),
-                            message.length(), groupAddress, groupPort);
+                    String multicast_msg = "SENSOR";
+                    DatagramPacket messageOut = new DatagramPacket(multicast_msg.getBytes(),
+                            multicast_msg.length(), groupAddress, groupPort);
                     mSocket.send(messageOut);
-                    byte[] buffer = new byte[6];
+                    mTextLastSent.post(new Runnable() {
+                        public void run() {
+                            mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
+                        }
+                    });
+                    byte[] buffer = new byte[32];
                     while (active) {
                         DatagramPacket messageIn = new DatagramPacket(buffer, buffer.length);
                         mSocket.receive(messageIn);
-                        String msg = new String(buffer);
+                        if(!active) break;
+                        String msg
+                                = new String(messageIn.getData(), 0, messageIn.getLength());
                         InetAddress addr = messageIn.getAddress();
                         int port = messageIn.getPort();
                         if(msg.equals("SERVER") && !gatewayAddr.contains(addr)){
                             gatewayAddr.add(addr);
-                            String presentation = deviceID + "_" + STRING_SENSOR_TYPE + "_" + localPort;
-                            DatagramPacket DPPresentation = new DatagramPacket(presentation.getBytes(),
-                                    presentation.length(), addr, port);
+                            String presentation_msg = "SENSOR_"+deviceID+"_"+STRING_SENSOR_TYPE+"_"+localPort;
+                            DatagramPacket DPPresentation = new DatagramPacket(
+                                    presentation_msg.getBytes(),
+                                    presentation_msg.length(),
+                                    addr, port);
                             mSocket.send(DPPresentation);
                         }
                     }
