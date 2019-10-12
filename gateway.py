@@ -1,25 +1,23 @@
 #!/usr/bin/env python
 
-import asyncio
+import os
+import sys
 import json
+import struct
+import socket
+import asyncio
 import logging
+import fileinput
 import websockets
 import http.server
 import socketserver
-import socket
-import os
-import struct
-import sys
+
 from threading import Thread
 from datetime import datetime
 
 logging.basicConfig()
 
-STATE = {"value": 0}
-
 SENSORS = {}
-
-USERS = set()
 
 PORT = 80
 Handler = http.server.SimpleHTTPRequestHandler
@@ -78,10 +76,12 @@ async def counter(websocket, path):
     finally:
         await unregister(websocket)
 
+
 def http_server():
     with socketserver.TCPServer(("", PORT), Handler) as httpd:
         print(f"Serving at {socket.gethostbyname(socket.gethostname())}:{PORT}")
         httpd.serve_forever()        
+
 
 def multicast_thread():
     loop = asyncio.new_event_loop()
@@ -90,6 +90,7 @@ def multicast_thread():
 
     loop.run_until_complete(multicast_handler())
     loop.close()
+
 
 async def multicast_handler():
 
@@ -131,6 +132,7 @@ async def multicast_handler():
                 await notify_state()
                 print('Sensor identified: {}'.format(sensor_id))
 
+
 def data_listener_thread():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -138,6 +140,7 @@ def data_listener_thread():
 
     loop.run_until_complete(udp_handler())
     loop.close()
+
 
 async def udp_handler():
     UDP_PORT_NO = 5003
@@ -165,7 +168,13 @@ async def udp_handler():
         print("New UDP message from ", addr)
         print(data.decode("UTF-8"))
 
+
 if __name__ == '__main__':
+    for line in fileinput.input(['index.html'], inplace=True):
+        if line.strip().startswith('var serverIP = '):
+            line = "        var serverIP = \"" + socket.gethostbyname(socket.gethostname()) + "\"\n"
+        sys.stdout.write(line)
+
     Thread(target=multicast_thread, daemon=True).start()
     Thread(target=data_listener_thread, daemon=True).start()
     Thread(target=http_server, daemon=True).start()
