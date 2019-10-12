@@ -19,6 +19,8 @@ logging.basicConfig()
 
 SENSORS = {}
 
+USERS = set()
+
 PORT = 80
 Handler = http.server.SimpleHTTPRequestHandler
 
