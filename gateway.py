@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import asyncio
 import json
 import logging
@@ -12,6 +10,7 @@ import struct
 import sys
 from threading import Thread
 from datetime import datetime
+import sensor_pb2;
 
 logging.basicConfig()
 
@@ -21,6 +20,9 @@ SENSORS = {}
 
 USERS = set()
 
+_sensor = sensor_pb2.Sensor()
+_sensors = {}
+
 PORT = 80
 Handler = http.server.SimpleHTTPRequestHandler
 
@@ -29,11 +31,11 @@ os.chdir(web_dir)
 
 
 def state_event():
-    sensors = {}
+    sensors = {}    
     for key, value in SENSORS.items():
         sensors[value['sensor_id']] = value
-
-    return json.dumps({"type": "data", "sensors": sensors})
+    #return json.dumps({"type": "data", "sensors": sensors})
+    return build_message()
 
 
 def users_event():
@@ -41,15 +43,22 @@ def users_event():
 
 
 async def notify_state():
-    if USERS:  # asyncio.wait doesn't accept an empty list
-        message = state_event()
-        await asyncio.wait([user.send(message) for user in USERS])
+    if USERS:  # asyncio.clswait doesn't accept an empty list
+        #message = state_event()
+        _ = sensor_pb2.Message()
+        await asyncio.wait([user.send(build_message().SerializeToString()) for user in USERS])
 
 
 async def notify_users():
     if USERS:  # asyncio.wait doesn't accept an empty list
-        message = users_event()
-        await asyncio.wait([user.send(message) for user in USERS])
+        #message = users_event()
+        await asyncio.wait([user.send(build_message().SerializeToString()) for user in USERS])
+
+def build_message():
+    _ = sensor_pb2.Message()
+    for a,b in SENSORS:
+            serialize_obj(_.sensors.add(),SENSORS[(a,b)],a,b,SENSORS[(a,b)].get('data'))
+    return _
 
 
 async def register(websocket):
@@ -69,12 +78,15 @@ async def counter(websocket, path):
 
     await register(websocket)
     try:
-        await websocket.send(state_event())
+        d = state_event()
+        await websocket.send(d.SerializeToString())
         async for message in websocket:
-            data = json.loads(message)
+            #data = json.loads(message)
+            comm = sensor_pb2.Command()
+            comm.ParseFromString(message)
             for key, value in SENSORS.items():
-                if(value['sensor_id'] == data["sensor_id"]):
-                    serverSock.sendto(data["action"].encode(), key)
+                if(value['sensor_id'] == comm.id):
+                    serverSock.sendto(comm.command.encode(), key)
     finally:
         await unregister(websocket)
 
@@ -108,12 +120,11 @@ async def multicast_handler():
     mreq = struct.pack('4sL', group, socket.INADDR_ANY)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
-    sock.sendto('SERVER'.encode(), (multicast_group, port_group))
+    sock.sendto('SERVER'.encode(), (multicast_group, port_group))    
 
     # Receive/respond loop
     while True:
         data, address = sock.recvfrom(1024)
-
         if(data == b'SENSOR'):
             sock.sendto('SERVER'.encode(), address)
         else:
@@ -124,12 +135,42 @@ async def multicast_handler():
                 sensor_port = int(split[3])
                 sensor_ip = address[0]
                 sensor_id = device_id + "_" + sensor_type
-                if(sensor_id not in SENSORS.keys()):
+                #if (split[1],int(split[3])) not in _sensors.keys():
+                #    _sensors[(split[1],int(split[3]))] = pbuf_from_json(split,address,sensor_type)
+                #else:
+                #    _sensors[(split[1],int(split[3]))].last_msg_date = datetime.now().strftime("%H:%M:%S")
+                if(sensor_id not in SENSORS.keys()):                    
                     SENSORS[(sensor_ip, sensor_port)] = {'sensor_id': sensor_id, 'type': sensor_type, 'last_msg_date':  datetime.now().strftime("%H:%M:%S")}
                 else:
                     SENSORS[(sensor_ip, sensor_port)]['last_msg_date'] = datetime.now().strftime("%H:%M:%S")
                 await notify_state()
                 print('Sensor identified: {}'.format(sensor_id))
+
+def serialize_obj(obj,_,address,port,data):
+    #sensor = sensor_pb2.Sensor()
+    #sensor.id = _[1]
+    #sensor.type = _[2]
+    #sensor.port = address[1]
+    #sensor.addr = address[0]
+    #sensor.last_msg_date = str(datetime.now().strftime("%H:%M:%S"))
+    typ = _['sensor_id'].split('_')[1]
+    obj.id = _['sensor_id']
+    obj.addr = address
+    obj.port = port
+    if data:
+        obj.data = json.dumps(data)
+    obj.last_msg_date = str(datetime.now().strftime("%H:%M:%S"))
+    if typ == 'LIGHT':
+        obj.type =  sensor_pb2.Sensor.LIGHT
+    if typ == 'MAGNETIC':
+        obj.type = sensor_pb2.Sensor.MAGNETIC
+    if typ == 'SOUND':
+        obj.type = sensor_pb2.Sensor.SOUND
+    if typ == 'LED':
+        obj.type = sensor_pb2.Sensor.LED
+
+
+
 
 def data_listener_thread():
     loop = asyncio.new_event_loop()
@@ -144,12 +185,12 @@ async def udp_handler():
     BUFFER_SIZE = 1024
 
     serverSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    serverSock.bind(("", UDP_PORT_NO))
+    serverSock.bind(("", UDP_PORT_NO))    
 
     # Receive/respond loop
     while True:
         data, addr = serverSock.recvfrom(BUFFER_SIZE)
-        if addr in SENSORS.keys():
+        if addr in SENSORS.keys():            
             SENSORS[addr]['last_msg_date'] = datetime.now().strftime("%H:%M:%S");
             if(SENSORS[addr]['type'] == 'LIGHT'):
                 SENSORS[addr]['data'] = float(data.decode("UTF-8"))

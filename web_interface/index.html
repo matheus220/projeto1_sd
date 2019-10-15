@@ -14,6 +14,8 @@
 
     <!-- Custom styles for this template -->
     <link href="css/style.css" rel="stylesheet">
+    <script src="https://cdn.rawgit.com/dcodeIO/protobuf.js/6.8.8/dist/protobuf.js"></script>
+
   </head>
 
   <body>
@@ -80,7 +82,8 @@
           case 'SOUND':
             image = 'sound';
             if(measure)
-              data = measure['status'] + "<br/> VOLUME: " +  measure['volume'];
+               data = measure.status + "<br/> VOLUME: " +  measure.volume;
+              //data = measure['status'] + "<br/> VOLUME: " +  measure['volume'];
           	else
           	  data = "OFF";
           	func1 = "send_action('" + sensorName + "', 'TOGGLE')"
@@ -104,33 +107,83 @@
         return "<div class='col-md-4 d-flex'> <div class='card mb-4 box-shadow d-flex flex-grow-1' style='width: 100%'> <div style='width: 100%; height: 120px; position: relative'> <img class='card-img-top sensor-img' src='images/" + image + ".png'> </div> <div class='card-body d-flex flex-column flex-grow-1'> <strong>" + sensorName + "</strong> <hr style='margin: 8px 0 8px 0' /> <div class='d-flex align-content-center flex-wrap' style='margin: 25px 0 30px 0; height: 100%;'> <p class='measure'>" + data + "</p> </div> <div class='d-flex justify-content-between align-items-center'> <div class='btn-group'>" + buttons + "</div> <small class='text-muted'>Last update " + measureDate + "</small> </div> </div> </div> </div>";
       }
 
+      var serverIP = "localhost";
+      var websocket = new WebSocket("ws://" + serverIP + ":6789/");
+      websocket.binaryType = 'arraybuffer';
+      websocket.onmessage = function(ev){
+         console.log(ev.data);
+         message = MessageBuilder.decode(new Uint8Array(ev.data));
+         console.log(message);
+         loadItems();
+      }
+      /*var onMessage = new Promise((resolve,reject) => {
+         websocket.onmessage = (ev) => {
+           resolve(ev);
+         }
+      })*/
+
+      /*
+      var onMessage = new Promise((resolve,reject) => {
+         websocket.onmessage = function(event){
+           resolve(event)
+         }
+      });*/
+
+      var MessageBuilder, CommandBuilder, message, command;
+      var builder = protobuf.load("sensor.proto",(err,root) => {     
+        MessageBuilder = root.lookupType("projeto1_sd.Message");
+        CommandBuilder = root.lookupType("projeto1_sd.Command");
+      });
+
+
+      /*onMessage.then(ev => {
+         console.log(ev.data);
+         message = MessageBuilder.decode(new Uint8Array(ev.data));
+         console.log(message);
+         loadItems();
+      })*/
+
       function loadItems() {
         var displayArray = "";
 
-        if(Object.keys(sensors).length === 0) {
+        if(message.sensors.length === 0) {
           displayArray = "<strong style='margin: 80px auto; font-size: 2.0em;'>NO SENSORS CONNECTED</strong>";
         } else {
-          Object.keys(sensors).forEach(function(key) {
+          /*Object.keys(sensors).forEach(function(key) {
             displayArray += generateItem(key, sensors[key]['type'], sensors[key]['data'], sensors[key]['last_msg_date']);
+          });*/
+          message.sensors.forEach(s => {
+            id = s.id.split('_')
+            displayArray += generateItem(s.id, id[1], s.data ? JSON.parse(s.data) : null, s.lastMsgDate);
           });
         }
 
         document.getElementById("items_container").innerHTML = displayArray;
       }
 
-      var serverIP = "192.168.15.153"
-      var websocket = new WebSocket("ws://" + serverIP + ":6789/");
+
+
+      /*var serverIP = "localhost"
+      var websocket = new WebSocket("ws://" + serverIP + ":6789/");*/
       
       function send_action(sensorID, act) {
-      		websocket.send(JSON.stringify({sensor_id: sensorID, action: act}));
+          var payload = CommandBuilder.encode(CommandBuilder.create({
+            id: sensorID,
+            command: act
+          })).finish();
+          websocket.send(payload);
+      		//websocket.send(JSON.stringify({sensor_id: sensorID, action: act}));
       }
 
       /*plus.onclick = function (event) {
           websocket.send(JSON.stringify({action: 'plus'}));
       }*/
-      websocket.onmessage = function (event) {
-        data = JSON.parse(event.data);
-        switch (data.type) {
+      //websocket.onmessage = function (event) {
+        //data = JSON.parse(event.data);
+        //console.log(event);
+        //sensors = JSON.parse(event.data.sensors);
+        //loadItems();
+        /*switch (data.type) {
             case 'data':
                 sensors = data.sensors;
                 loadItems();
@@ -140,8 +193,8 @@
             default:
                 console.error(
                     "unsupported event", data);
-        }
-      };
+        }*/
+      //};
     </script>
   </body>
 </html>
