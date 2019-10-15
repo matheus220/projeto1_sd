@@ -77,13 +77,12 @@
           case 'MAGNETIC':
             image = 'magnet';
             if(measure)
-              data = "<strong>X</strong>: " + measure['x'] + " µT<br/>" + "<strong>Y</strong>: " + measure['y'] + " µT<br/>" + "<strong>Z</strong>: " + measure['z'] + " µT";
+              data = "<strong>X</strong>: " + measure.x + " µT<br/>" + "<strong>Y</strong>: " + measure.y + " µT<br/>" + "<strong>Z</strong>: " + measure.z + " µT";
             break;
           case 'SOUND':
             image = 'sound';
             if(measure)
                data = measure.status + "<br/> VOLUME: " +  measure.volume;
-              //data = measure['status'] + "<br/> VOLUME: " +  measure['volume'];
           	else
           	  data = "OFF";
           	func1 = "send_action('" + sensorName + "', 'TOGGLE')"
@@ -111,37 +110,15 @@
       var websocket = new WebSocket("ws://" + serverIP + ":6789/");
       websocket.binaryType = 'arraybuffer';
       websocket.onmessage = function(ev){
-         console.log(ev.data);
          message = MessageBuilder.decode(new Uint8Array(ev.data));
-         console.log(message);
          loadItems();
       }
-      /*var onMessage = new Promise((resolve,reject) => {
-         websocket.onmessage = (ev) => {
-           resolve(ev);
-         }
-      })*/
-
-      /*
-      var onMessage = new Promise((resolve,reject) => {
-         websocket.onmessage = function(event){
-           resolve(event)
-         }
-      });*/
 
       var MessageBuilder, CommandBuilder, message, command;
-      var builder = protobuf.load("sensor.proto",(err,root) => {     
+      var builder = protobuf.load("./sensor.proto",(err,root) => {     
         MessageBuilder = root.lookupType("projeto1_sd.Message");
         CommandBuilder = root.lookupType("projeto1_sd.Command");
       });
-
-
-      /*onMessage.then(ev => {
-         console.log(ev.data);
-         message = MessageBuilder.decode(new Uint8Array(ev.data));
-         console.log(message);
-         loadItems();
-      })*/
 
       function loadItems() {
         var displayArray = "";
@@ -149,22 +126,14 @@
         if(message.sensors.length === 0) {
           displayArray = "<strong style='margin: 80px auto; font-size: 2.0em;'>NO SENSORS CONNECTED</strong>";
         } else {
-          /*Object.keys(sensors).forEach(function(key) {
-            displayArray += generateItem(key, sensors[key]['type'], sensors[key]['data'], sensors[key]['last_msg_date']);
-          });*/
           message.sensors.forEach(s => {
             id = s.id.split('_')
             displayArray += generateItem(s.id, id[1], s.data ? JSON.parse(s.data) : null, s.lastMsgDate);
           });
         }
-
         document.getElementById("items_container").innerHTML = displayArray;
       }
 
-
-
-      /*var serverIP = "localhost"
-      var websocket = new WebSocket("ws://" + serverIP + ":6789/");*/
       
       function send_action(sensorID, act) {
           var payload = CommandBuilder.encode(CommandBuilder.create({
@@ -172,12 +141,8 @@
             command: act
           })).finish();
           websocket.send(payload);
-      		//websocket.send(JSON.stringify({sensor_id: sensorID, action: act}));
       }
 
-      /*plus.onclick = function (event) {
-          websocket.send(JSON.stringify({action: 'plus'}));
-      }*/
       //websocket.onmessage = function (event) {
         //data = JSON.parse(event.data);
         //console.log(event);
