@@ -33,10 +33,6 @@ os.chdir(web_dir)
 
 
 def state_event():
-    sensors = {}    
-    #for key, value in SENSORS.items():
-    #    sensors[value['sensor_id']] = value
-    #return json.dumps({"type": "data", "sensors": sensors})
     return build_message()
 
 
@@ -54,10 +50,11 @@ async def notify_users():
     if USERS:  # asyncio.wait doesn't accept an empty list
         await asyncio.wait([user.send(build_message().SerializeToString()) for user in USERS])
 
+
 def build_message():
     _ = sensor_pb2.Message()
     for a,b in SENSORS:
-            serialize_obj(_.sensors.add(),SENSORS[(a,b)],a,b,SENSORS[(a,b)].get('data'))
+        serialize_obj(_.sensors.add(),SENSORS[(a,b)],a,b,SENSORS[(a,b)].get('data'))
     return _
 
 
@@ -200,7 +197,7 @@ async def udp_handler():
 if __name__ == '__main__':
     for line in fileinput.input(['index.html'], inplace=True):
         if line.strip().startswith('var serverIP = '):
-            line = "        var serverIP = \"" + socket.gethostbyname(socket.gethostname()) + "\"\n"
+            line = "        var serverIP = \"" + socket.gethostbyname(socket.gethostname()) + "\";\n"
         sys.stdout.write(line)
 
     Thread(target=multicast_thread, daemon=True).start()
