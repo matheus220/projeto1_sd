@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import time
 import struct
 import socket
 import asyncio
@@ -22,14 +23,17 @@ SENSORS = {}
 
 USERS = set()
 
-_sensor = sensor_pb2.Sensor()
-_sensors = {}
+# _sensor = sensor_pb2.Sensor()
+# _sensors = {}
 
 PORT = 80
 Handler = http.server.SimpleHTTPRequestHandler
 
 web_dir = os.path.join(os.path.dirname(__file__), 'web_interface')
 os.chdir(web_dir)
+
+multicast_group = '239.0.1.2'
+multicast_port = 20480
 
 
 def state_event():
@@ -89,7 +93,47 @@ async def counter(websocket, path):
 def http_server():
     with socketserver.TCPServer(("", PORT), Handler) as httpd:
         print(f"Serving at {socket.gethostbyname(socket.gethostname())}:{PORT}")
-        httpd.serve_forever()        
+        httpd.serve_forever()
+
+
+def sensor_finder_thread():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    print("Sensor search initiated on the network")
+
+    loop.run_until_complete(sensor_finder_handler())
+    loop.close()
+
+
+async def sensor_finder_handler():
+
+    server_address = ('', multicast_port)
+    # Create the socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    # Bind to the server address
+    sock.bind(server_address)
+
+    # Tell the operating system to add the socket to the multicast group
+    # on all interfaces.
+    group = socket.inet_aton(multicast_group)
+    mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
+    while True:
+        sock.sendto('SERVER'.encode(), (multicast_group, multicast_port))
+        time.sleep(10)
+        keys_to_remove = []
+        for key, value in SENSORS.items():
+            dt = (datetime.now()-datetime.strptime(value['last_msg_date'], '%Y-%m-%d %H:%M:%S')).total_seconds()
+            if dt > 15.0:
+                keys_to_remove.append(key)
+        if len(keys_to_remove):
+            for key in keys_to_remove:
+                print("Sensor " + SENSORS[key]['sensor_id'] + " removed")
+                del SENSORS[key]
+            await notify_state()
 
 
 def multicast_thread():
@@ -103,11 +147,10 @@ def multicast_thread():
 
 async def multicast_handler():
 
-    multicast_group = '239.0.1.2'
-    port_group = 20480
-    server_address = ('', port_group)
+    server_address = ('', multicast_port)
     # Create the socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     # Bind to the server address
     sock.bind(server_address)
@@ -118,7 +161,7 @@ async def multicast_handler():
     mreq = struct.pack('4sL', group, socket.INADDR_ANY)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
-    sock.sendto('SERVER'.encode(), (multicast_group, port_group))    
+    sock.sendto('SERVER'.encode(), (multicast_group, multicast_port))
 
     # Receive/respond loop
     while True:
@@ -133,11 +176,12 @@ async def multicast_handler():
                 sensor_port = int(split[3])
                 sensor_ip = address[0]
                 sensor_id = device_id + "_" + sensor_type
-                if(sensor_id not in SENSORS.keys()):                    
-                    SENSORS[(sensor_ip, sensor_port)] = {'sensor_id': sensor_id, 'type': sensor_type, 'last_msg_date':  datetime.now().strftime("%H:%M:%S")}
+                if(sensor_id not in SENSORS.keys()):
+                    SENSORS[(sensor_ip, sensor_port)] = {'sensor_id': sensor_id, 'type': sensor_type, 'last_msg_date':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                 else:
-                    SENSORS[(sensor_ip, sensor_port)]['last_msg_date'] = datetime.now().strftime("%H:%M:%S")
+                    SENSORS[(sensor_ip, sensor_port)]['last_msg_date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 await notify_state()
+                print(SENSORS)
                 print('Sensor identified: {}'.format(sensor_id))
 
 
@@ -148,7 +192,7 @@ def serialize_obj(obj,_,address,port,data):
     obj.port = port
     if data:
         obj.data = json.dumps(data)
-    obj.last_msg_date = str(datetime.now().strftime("%H:%M:%S"))
+    obj.last_msg_date = str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     if typ == 'LIGHT':
         obj.type =  sensor_pb2.Sensor.LIGHT
     if typ == 'MAGNETIC':
@@ -177,8 +221,8 @@ async def udp_handler():
     # Receive/respond loop
     while True:
         data, addr = serverSock.recvfrom(BUFFER_SIZE)
-        if addr in SENSORS.keys():            
-            SENSORS[addr]['last_msg_date'] = datetime.now().strftime("%H:%M:%S");
+        if addr in SENSORS.keys():
+            SENSORS[addr]['last_msg_date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S");
             if(SENSORS[addr]['type'] == 'LIGHT'):
                 SENSORS[addr]['data'] = float(data.decode("UTF-8"))
             elif(SENSORS[addr]['type'] == 'MAGNETIC'):
@@ -190,8 +234,7 @@ async def udp_handler():
                 split = data.decode("UTF-8").split(',')
                 SENSORS[addr]['data'] = {'status': split[0], 'volume': split[1]}
         await notify_state()
-        print("New UDP message from ", addr)
-        print(data.decode("UTF-8"))
+        print("New message from ", SENSORS[addr]['sensor_id'])
 
 
 if __name__ == '__main__':
@@ -203,6 +246,7 @@ if __name__ == '__main__':
     Thread(target=multicast_thread, daemon=True).start()
     Thread(target=data_listener_thread, daemon=True).start()
     Thread(target=http_server, daemon=True).start()
+    Thread(target=sensor_finder_thread, daemon=True).start()
 
     start_server = websockets.serve(counter, "", 6789)
 
