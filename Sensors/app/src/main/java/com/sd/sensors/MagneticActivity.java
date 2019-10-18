@@ -270,8 +270,9 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
                                 = new String(messageIn.getData(), 0, messageIn.getLength());
                         InetAddress addr = messageIn.getAddress();
                         int port = messageIn.getPort();
-                        if(msg.equals("SERVER") && !gatewayAddr.contains(addr)){
-                            gatewayAddr.add(addr);
+                        if(msg.equals("SERVER")){
+                            if(!gatewayAddr.contains(addr))
+                                gatewayAddr.add(addr);
                             String presentation_msg = "SENSOR_"+deviceID+"_"+STRING_SENSOR_TYPE+"_"+localPort;
                             DatagramPacket DPPresentation = new DatagramPacket(
                                     presentation_msg.getBytes(),

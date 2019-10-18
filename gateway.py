@@ -20,11 +20,9 @@ import sensor_pb2;
 logging.basicConfig()
 
 SENSORS = {}
+ADDR_ID_MAP = {}
 
 USERS = set()
-
-# _sensor = sensor_pb2.Sensor()
-# _sensors = {}
 
 PORT = 80
 Handler = http.server.SimpleHTTPRequestHandler
@@ -132,6 +130,7 @@ async def sensor_finder_handler():
         if len(keys_to_remove):
             for key in keys_to_remove:
                 print("Sensor " + SENSORS[key]['sensor_id'] + " removed")
+                del ADDR_ID_MAP[SENSORS[key]['sensor_id']]
                 del SENSORS[key]
             await notify_state()
 
@@ -176,12 +175,16 @@ async def multicast_handler():
                 sensor_port = int(split[3])
                 sensor_ip = address[0]
                 sensor_id = device_id + "_" + sensor_type
-                if(sensor_id not in SENSORS.keys()):
+                if(sensor_id not in ADDR_ID_MAP.keys()):
+                    ADDR_ID_MAP[sensor_id] = (sensor_ip, sensor_port)
                     SENSORS[(sensor_ip, sensor_port)] = {'sensor_id': sensor_id, 'type': sensor_type, 'last_msg_date':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                 else:
+                    if ADDR_ID_MAP[sensor_id] != (sensor_ip, sensor_port):
+                        SENSORS[(sensor_ip, sensor_port)] = SENSORS[ADDR_ID_MAP[sensor_id]]
+                        del SENSORS[ADDR_ID_MAP[sensor_id]]
+                        ADDR_ID_MAP[sensor_id] = (sensor_ip, sensor_port)
                     SENSORS[(sensor_ip, sensor_port)]['last_msg_date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 await notify_state()
-                print(SENSORS)
                 print('Sensor identified: {}'.format(sensor_id))
 
 
@@ -227,14 +230,14 @@ async def udp_handler():
                 SENSORS[addr]['data'] = float(data.decode("UTF-8"))
             elif(SENSORS[addr]['type'] == 'MAGNETIC'):
                 split = data.decode("UTF-8").split(',')
-                SENSORS[addr]['data'] = {'x': split[0], 'y': split[1], 'z': split[2]}
+                SENSORS[addr]['data'] = {'x': "{0:.2f}".format(float(split[0])), 'y': "{0:.2f}".format(float(split[1])), 'z': "{0:.2f}".format(float(split[2]))}
             elif(SENSORS[addr]['type'] == 'LED'):
                 SENSORS[addr]['data'] = data.decode("UTF-8")
             elif(SENSORS[addr]['type'] == 'SOUND'):
                 split = data.decode("UTF-8").split(',')
                 SENSORS[addr]['data'] = {'status': split[0], 'volume': split[1]}
-        await notify_state()
-        print("New message from ", SENSORS[addr]['sensor_id'])
+            await notify_state()
+            print("New message from ", SENSORS[addr]['sensor_id'])
 
 
 if __name__ == '__main__':
