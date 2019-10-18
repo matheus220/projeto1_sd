@@ -70,11 +70,12 @@ async def unregister(websocket):
     await notify_users()
 
 
-async def counter(websocket, path):
-    # register(websocket) sends user_event() to websocket
-    serverSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    serverSock.bind(("", 5004))
+# register(websocket) sends user_event() to websocket
+serverSock2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+serverSock2.bind(("", 5008))
 
+async def counter(websocket, path):
+    
     await register(websocket)
     try:
         await websocket.send(state_event().SerializeToString())
@@ -83,7 +84,7 @@ async def counter(websocket, path):
             comm.ParseFromString(message)
             for key, value in SENSORS.items():
                 if(value['sensor_id'] == comm.id):
-                    serverSock.sendto(comm.command.encode(), key)
+                    serverSock2.sendto(comm.command.encode(), key)
     finally:
         await unregister(websocket)
 
