@@ -35,6 +35,14 @@
 	        		</svg>
 	        		<strong style="margin-left: 20px">Sensor Data Visualization</strong>
 	      		</a>
+                <div style="position: relative; margin-top: 8px;">
+                    <form>
+                        <div class="radio-group">
+                            <input type="radio" id="option-one" name="selector" checked><label for="option-one">RabbitMQ RPC</label>
+                            <input type="radio" id="option-two" name="selector"><label for="option-two">gRPC</label>
+                        </div>
+                    </form>
+                </div>
 	    	</div>
 	  	</div>
 	</header>
@@ -42,13 +50,123 @@
 	<main role="main">
 		<div class="album py-5 bg-light">
 			<div class="container">
-			  	<div class="row" id="items_container"></div>
+				<div class="row">
+					<div class="col-md-4 d-flex">
+                        <div class="card mb-4 w-100 p-3 box-shadow">
+                            <div>
+                                <strong>Sensor types</strong>
+                            </div>
+                            <hr style='margin: 8px 0 8px 0' />
+                            <div>
+        						<ul>
+        						    <li class="check light">
+        								<input type="checkbox" id="light" value="">
+        								<label for="beardcheck">OK1</label>
+        						    </li>
+        						    <li class="check magnetic">
+        						        <input type="checkbox" id="magnetic" value="">
+        						        <label for="beardcheck">OK2</label>
+        						    </li>
+        						    <li class="check sound">
+        						        <input type="checkbox" id="sound" value="">
+        						        <label for="beardcheck">OK3</label>
+        						    </li>
+        						    <li class="check led">
+        						        <input type="checkbox" id="led" value="">
+        						        <label for="beardcheck">OK4</label>
+        						    </li>
+        						</ul>
+                            </div>
+                        </div>
+					</div>
+					<div class="col-md-8 d-flex">
+                        <div class="card mb-4 w-100 p-3 box-shadow">
+                            <div>
+                                <strong>Connected sensors</strong>
+                            </div>
+                            <hr style='margin: 8px 0 8px 0' />
+    						<ul>
+                                <li class="check light_sensor">
+                                    <input type="checkbox" id="light_sensor" value="">
+                                    <label for="beardcheck">OK1</label>
+                                </li>
+                                <li class="check magnetic_sensor">
+                                    <input type="checkbox" id="magnetic_sensor" value="">
+                                    <label for="beardcheck">OK2</label>
+                                </li>
+                                <li class="check sound_sensor">
+                                    <input type="checkbox" id="sound_sensor" value="">
+                                    <label for="beardcheck">OK3</label>
+                                </li>
+                                <li class="check led_sensor">
+                                    <input type="checkbox" id="led_sensor" value="">
+                                    <label for="beardcheck">OK4</label>
+                                </li>
+                                <li class="check light_sensor">
+                                    <input type="checkbox" id="light_sensor" value="">
+                                    <label for="beardcheck">OK1</label>
+                                </li>
+                                <li class="check magnetic_sensor">
+                                    <input type="checkbox" id="magnetic_sensor" value="">
+                                    <label for="beardcheck">OK2</label>
+                                </li>
+                                <li class="check sound_sensor">
+                                    <input type="checkbox" id="sound_sensor" value="">
+                                    <label for="beardcheck">OK3</label>
+                                </li>
+                                <li class="check led_sensor">
+                                    <input type="checkbox" id="led_sensor" value="">
+                                    <label for="beardcheck">OK4</label>
+                                </li>
+                                <li class="check light_sensor">
+                                    <input type="checkbox" id="light_sensor" value="">
+                                    <label for="beardcheck">OK1</label>
+                                </li>
+                                <li class="check magnetic_sensor">
+                                    <input type="checkbox" id="magnetic_sensor" value="">
+                                    <label for="beardcheck">OK2</label>
+                                </li>
+                                <li class="check sound_sensor">
+                                    <input type="checkbox" id="sound_sensor" value="">
+                                    <label for="beardcheck">OK3</label>
+                                </li>
+                                <li class="check led_sensor">
+                                    <input type="checkbox" id="led_sensor" value="">
+                                    <label for="beardcheck">OK4</label>
+                                </li>
+                                <li class="check light_sensor">
+                                    <input type="checkbox" id="light_sensor" value="">
+                                    <label for="beardcheck">OK1</label>
+                                </li>
+                                <li class="check magnetic_sensor">
+                                    <input type="checkbox" id="magnetic_sensor" value="">
+                                    <label for="beardcheck">OK2</label>
+                                </li>
+                                <li class="check sound_sensor">
+                                    <input type="checkbox" id="sound_sensor" value="">
+                                    <label for="beardcheck">OK3</label>
+                                </li>
+                                <li class="check led_sensor">
+                                    <input type="checkbox" id="led_sensor" value="">
+                                    <label for="beardcheck">OK4</label>
+                                </li>
+                            </ul>
+                        </div>
+					</div>
+				</div>
+			  	<div class="row" id="items_container">
+                    <div class='col-md-4 d-flex'> <div class='card mb-4 box-shadow d-flex flex-grow-1' style='width: 100%'> <div style='width: 100%; height: 120px; position: relative'> <img class='card-img-top sensor-img' src='images/sun.png'> </div> <div class='card-body d-flex flex-column flex-grow-1'> <strong>Matheus</strong> <hr style='margin: 8px 0 8px 0' /> <div class='d-flex align-content-center flex-wrap' style='margin: 25px 0 30px 0; height: 100%;'> <p class='measure'>Hoje</p> </div> <div class='d-flex justify-content-between align-items-center'> <div class='btn-group'></div> <small class='text-muted' style='text-align: right;'>Last update<br/> ontem</small> </div> </div> </div> </div>
+                     <div class='col-md-4 d-flex'> <div class='card mb-4 box-shadow d-flex flex-grow-1' style='width: 100%'> <div style='width: 100%; height: 120px; position: relative'> <img class='card-img-top sensor-img' src='images/sun.png'> </div> <div class='card-body d-flex flex-column flex-grow-1'> <strong>Matheus</strong> <hr style='margin: 8px 0 8px 0' /> <div class='d-flex align-content-center flex-wrap' style='margin: 25px 0 30px 0; height: 100%;'> <p class='measure'>Hoje</p> </div> <div class='d-flex justify-content-between align-items-center'> <div class='btn-group'></div> <small class='text-muted' style='text-align: right;'>Last update<br/> ontem</small> </div> </div> </div> </div>
+                      <div class='col-md-4 d-flex'> <div class='card mb-4 box-shadow d-flex flex-grow-1' style='width: 100%'> <div style='width: 100%; height: 120px; position: relative'> <img class='card-img-top sensor-img' src='images/sun.png'> </div> <div class='card-body d-flex flex-column flex-grow-1'> <strong>Matheus</strong> <hr style='margin: 8px 0 8px 0' /> <div class='d-flex align-content-center flex-wrap' style='margin: 25px 0 30px 0; height: 100%;'> <p class='measure'>Hoje</p> </div> <div class='d-flex justify-content-between align-items-center'> <div class='btn-group'></div> <small class='text-muted' style='text-align: right;'>Last update<br/> ontem</small> </div> </div> </div> </div>
+                       <div class='col-md-4 d-flex'> <div class='card mb-4 box-shadow d-flex flex-grow-1' style='width: 100%'> <div style='width: 100%; height: 120px; position: relative'> <img class='card-img-top sensor-img' src='images/sun.png'> </div> <div class='card-body d-flex flex-column flex-grow-1'> <strong>Matheus</strong> <hr style='margin: 8px 0 8px 0' /> <div class='d-flex align-content-center flex-wrap' style='margin: 25px 0 30px 0; height: 100%;'> <p class='measure'>Hoje</p> </div> <div class='d-flex justify-content-between align-items-center'> <div class='btn-group'></div> <small class='text-muted' style='text-align: right;'>Last update<br/> ontem</small> </div> </div> </div> </div>
+                </div>
+                
 			</div>
 		</div>
 	</main>
 
     <script src="js/bootstrap.min.js"></script>
-
+    <script src="js/jquery-3.4.1.min.js"></script>
     <script>
       	var sensors = {};
 
@@ -91,7 +209,7 @@
 	        return ("<div class='col-md-4 d-flex'> <div class='card mb-4 box-shadow d-flex flex-grow-1' style='width: 100%'> <div style='width: 100%; height: 120px; position: relative'> <img class='card-img-top sensor-img' src='images/" + image + ".png'> </div> <div class='card-body d-flex flex-column flex-grow-1'> <strong>" + sensorName + "</strong> <hr style='margin: 8px 0 8px 0' /> <div class='d-flex align-content-center flex-wrap' style='margin: 25px 0 30px 0; height: 100%;'> <p class='measure'>" + data + "</p> </div> <div class='d-flex justify-content-between align-items-center'> <div class='btn-group'>" + buttons + "</div> <small class='text-muted' style='text-align: right;'>Last update<br/> " + measureDate + "</small> </div> </div> </div> </div>");
       	}
 
-        var serverIP = "localhost";
+        var serverIP = "192.168.15.97";
       	var websocket = new WebSocket("ws://" + serverIP + ":6789/");
       	websocket.binaryType = "arraybuffer";
 		websocket.onmessage = function(ev) {
@@ -128,6 +246,15 @@
 			).finish();
 			websocket.send(payload);
 		}
+		$(function(){
+			$("input").click(function(){
+				if(this.checked) {
+					$(this).parent().addClass("on");
+				} else {
+					$(this).parent().removeClass("on");
+				}
+			});
+		});
     </script>
 </body>
 
