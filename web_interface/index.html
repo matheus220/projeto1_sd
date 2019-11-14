@@ -38,8 +38,8 @@
                 <div style="position: relative; margin-top: 8px;">
                     <form>
                         <div class="radio-group">
-                            <input type="radio" id="option-one" name="selector" checked><label for="option-one">RabbitMQ RPC</label>
-                            <input type="radio" id="option-two" name="selector"><label for="option-two">gRPC</label>
+                            <input type="radio" id="rrpc" name="selector" checked><label for="rrpc">RabbitMQ RPC</label>
+                            <input type="radio" id="grpc" name="selector"><label for="grpc">gRPC</label>
                         </div>
                     </form>
                 </div>
@@ -61,19 +61,19 @@
         						<ul>
         						    <li class="check light">
         								<input type="checkbox" id="light" value="">
-        								<label for="beardcheck">OK1</label>
+        								<label for="light">LIGHT</label>
         						    </li>
         						    <li class="check magnetic">
         						        <input type="checkbox" id="magnetic" value="">
-        						        <label for="beardcheck">OK2</label>
+        						        <label for="magnetic">MAGNETIC</label>
         						    </li>
         						    <li class="check sound">
         						        <input type="checkbox" id="sound" value="">
-        						        <label for="beardcheck">OK3</label>
+        						        <label for="sound">SOUND</label>
         						    </li>
         						    <li class="check led">
         						        <input type="checkbox" id="led" value="">
-        						        <label for="beardcheck">OK4</label>
+        						        <label for="led">LED</label>
         						    </li>
         						</ul>
                             </div>
@@ -98,6 +98,7 @@
 	        var data = "";
 	        var image = "";
 	        var buttons = "";
+	        var rpc_opt = "rrpc";
 
 	        if (!measure) data = "No data received";
 
@@ -137,6 +138,7 @@
       	var websocket = new WebSocket("ws://" + serverIP + ":6789/");
       	websocket.binaryType = "arraybuffer";
 		websocket.onmessage = function(ev) {
+			console.log(ev.data);
 			message = MessageBuilder.decode(new Uint8Array(ev.data));
 			loadItems();
 		};
@@ -154,8 +156,22 @@
 	          	displayArray = "<strong style='margin: 80px auto; font-size: 2.0em;'>NO SENSORS CONNECTED</strong>";
 	        } else {
 	          	message.sensors.forEach(s => {
-		            id = s.id.split("_");
-		            displayArray += generateItem(s.id, id[1], s.data ? JSON.parse(s.data) : null, s.lastMsgDate);
+	          		var type = "";
+		            switch(s.type) {
+					  	case 0:
+					    	type = "LIGHT";
+					    	break;
+				  		case 1:
+					    	type = "MAGNETIC";
+					    	break;
+					    case 2:
+					    	type = "SOUND";
+					    	break;
+					    case 3:
+					    	type = "LED";
+					    	break;
+					}
+		            displayArray += generateItem(s.addr, type, s.data ? JSON.parse(s.data) : null, s.lastMsgDate);
 	          	});
 	        }
         	document.getElementById("items_container").innerHTML = displayArray;
@@ -172,7 +188,7 @@
 		}
 
 		$(function(){
-			$("input").click(function(){
+			$("input:checkbox").click(function(){
 				if(this.checked) {
 					send_action("bind", "*."+this.id)
 					$(this).parent().addClass("on");
@@ -180,6 +196,12 @@
 					send_action("unbind", "*."+this.id)
 					$(this).parent().removeClass("on");
 				}
+			});
+		});
+
+		$(function(){
+			$("input:radio").click(function(){
+				rpc = this.id;
 			});
 		});
     </script>

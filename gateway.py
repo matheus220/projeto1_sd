@@ -102,9 +102,27 @@ class Consumer(Thread):
 
     def callback(self, ch, method, properties, body):
         print("\n[<-] %r:%r" % (method.routing_key, body))
+        _ = sensor_pb2.Message()
+        msg = _.sensors.add()
+        sensor_name, sensor_type = method.routing_key.split('.')
+        sensor_type = sensor_type.upper()
+        msg.addr = sensor_name
+        msg.port = 5000
+        if sensor_type == 'LIGHT':
+            msg.type = sensor_pb2.Sensor.LIGHT
+        elif sensor_type == 'MAGNETIC':
+            msg.type = sensor_pb2.Sensor.MAGNETIC
+        elif sensor_type == 'SOUND':
+            msg.type = sensor_pb2.Sensor.SOUND
+        elif sensor_type == 'LED':
+            msg.type = sensor_pb2.Sensor.LED
+
+        msg.data = body
+        msg.last_msg_date = str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.websocket.send(json.dumps({"type": "state", "value": body.decode("utf-8")})))
+        loop.run_until_complete(self.websocket.send(_.SerializeToString()))
         loop.close()
 
     def queue_bind(self, routing_key):
