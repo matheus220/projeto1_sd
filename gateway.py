@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import time
+import pika
 import struct
 import socket
 import asyncio
@@ -15,7 +16,7 @@ import socketserver
 
 from threading import Thread
 from datetime import datetime
-import sensor_pb2;
+import sensor_pb2
 
 logging.basicConfig()
 
@@ -32,6 +33,9 @@ os.chdir(web_dir)
 
 multicast_group = '239.0.1.2'
 multicast_port = 20480
+
+CREDENTIALS = pika.PlainCredentials('projetosd', 'projetosd')
+RABBITMQ_HOST = socket.gethostbyname(socket.gethostname())
 
 
 def state_event():
@@ -70,23 +74,85 @@ async def unregister(websocket):
     await notify_users()
 
 
-# register(websocket) sends user_event() to websocket
-serverSock2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-serverSock2.bind(("", 5008))
+class Consumer(Thread):
+    EXCHANGE_NAME = 'topic_logs'
 
-async def counter(websocket, path):
-    
-    await register(websocket)
+    def __init__(self, websocket):
+        Thread.__init__(self)
+        self.setDaemon(True)
+
+        self.websocket = websocket
+        self.connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=RABBITMQ_HOST, credentials=CREDENTIALS))
+        
+        self.channel = self.connection.channel()
+        self.channel.exchange_declare(exchange=Consumer.EXCHANGE_NAME, exchange_type='topic')
+
+        result = self.channel.queue_declare('', exclusive=True)
+        self.queue_name = result.method.queue
+
+        self.channel.basic_consume(queue=self.queue_name, on_message_callback=self.callback, auto_ack=True)
+
+        print("\n[#] New connection established")
+        print(" |--- Exchange name: " + Consumer.EXCHANGE_NAME)
+        print(" |--- Queue name: " + self.queue_name)
+
+    def run(self):
+        self.channel.start_consuming()
+
+    def callback(self, ch, method, properties, body):
+        print("\n[<-] %r:%r" % (method.routing_key, body))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.websocket.send(json.dumps({"type": "state", "value": body.decode("utf-8")})))
+        loop.close()
+
+    def queue_bind(self, routing_key):
+        self.channel.queue_bind(exchange=Consumer.EXCHANGE_NAME, queue=self.queue_name, routing_key=routing_key)
+        print("\n[+] Queue bind")
+        print(" |--- Exchange name: " + Consumer.EXCHANGE_NAME)
+        print(" |--- Queue name: " + self.queue_name)
+        print(" |--- Routing key: " + routing_key)
+
+    def queue_unbind(self, routing_key):
+        self.channel.queue_unbind(exchange=Consumer.EXCHANGE_NAME, queue=self.queue_name, routing_key=routing_key)
+        print("\n[-] Queue unbind")
+        print(" |--- Exchange name: " + Consumer.EXCHANGE_NAME)
+        print(" |--- Queue name: " + self.queue_name)
+        print(" |--- Routing key: " + routing_key)
+
+    def disconnect(self):
+        self.channel.stop_consuming()
+        time.sleep(0.5)
+        self.channel.close()
+        time.sleep(0.5)
+        self.connection.close()
+        print("\n[x] Disconnection")
+        print(" |--- Exchange name: " + Consumer.EXCHANGE_NAME)
+        print(" |--- Queue name: " + self.queue_name)
+
+
+async def connection_handler(websocket, path):
+    consumer = Consumer(websocket)
+    consumer.start()
+
     try:
-        await websocket.send(state_event().SerializeToString())
         async for message in websocket:
             comm = sensor_pb2.Command()
             comm.ParseFromString(message)
-            for key, value in SENSORS.items():
-                if(value['sensor_id'] == comm.id):
-                    serverSock2.sendto(comm.command.encode(), key)
+            if comm.id == "bind":
+                consumer.queue_bind(comm.command)
+            elif comm.id == "unbind":
+                consumer.queue_unbind(comm.command)
+            elif comm.id == "grpc":
+                print(comm.command)
+            elif comm.id == "rrpc":
+                print(comm.command)
+            else:
+                logging.error("unsupported event")
     finally:
-        await unregister(websocket)
+        consumer.disconnect()
+        consumer.join()
 
 
 def http_server():
@@ -252,7 +318,7 @@ if __name__ == '__main__':
     Thread(target=http_server, daemon=True).start()
     Thread(target=sensor_finder_thread, daemon=True).start()
 
-    start_server = websockets.serve(counter, "", 6789)
+    start_server = websockets.serve(connection_handler, "", 6789)
 
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

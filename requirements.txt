@@ -1,0 +1,4 @@
+pika==1.1.0
+protobuf==3.10.0
+six==1.13.0
+websockets==8.1
