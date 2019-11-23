@@ -110,14 +110,23 @@ class Consumer(Thread):
         msg.port = 5000
         if sensor_type == 'LIGHT':
             msg.type = sensor_pb2.Sensor.LIGHT
+            msg.data = json.dumps(float(body.decode("UTF-8")))
         elif sensor_type == 'MAGNETIC':
             msg.type = sensor_pb2.Sensor.MAGNETIC
+            split = body.decode("UTF-8").split(',')
+            msg.data = json.dumps({
+                'x': "{0:.2f}".format(float(split[0])),
+                'y': "{0:.2f}".format(float(split[1])),
+                'z': "{0:.2f}".format(float(split[2]))
+            })
         elif sensor_type == 'SOUND':
             msg.type = sensor_pb2.Sensor.SOUND
+            split = body.decode("UTF-8").split(',')
+            msg.data = json.dumps({'status': split[0], 'volume': split[1]})
         elif sensor_type == 'LED':
             msg.type = sensor_pb2.Sensor.LED
+            msg.data = json.dumps(body.decode("UTF-8"))
 
-        msg.data = body
         msg.last_msg_date = str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
         loop = asyncio.new_event_loop()
@@ -262,7 +271,11 @@ async def multicast_handler():
                 sensor_id = device_id + "_" + sensor_type
                 if(sensor_id not in ADDR_ID_MAP.keys()):
                     ADDR_ID_MAP[sensor_id] = (sensor_ip, sensor_port)
-                    SENSORS[(sensor_ip, sensor_port)] = {'sensor_id': sensor_id, 'type': sensor_type, 'last_msg_date':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+                    SENSORS[(sensor_ip, sensor_port)] = {
+                        'sensor_id': sensor_id,
+                        'type': sensor_type,
+                        'last_msg_date':  datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
                 else:
                     if ADDR_ID_MAP[sensor_id] != (sensor_ip, sensor_port):
                         SENSORS[(sensor_ip, sensor_port)] = SENSORS[ADDR_ID_MAP[sensor_id]]
