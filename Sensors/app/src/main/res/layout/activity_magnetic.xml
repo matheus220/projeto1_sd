@@ -25,6 +25,22 @@
     </RelativeLayout>
 
     <RelativeLayout
+        android:layout_weight="0.8"
+        android:layout_width="match_parent"
+        android:layout_height="0dp">
+
+        <TextView
+            android:id="@+id/textConnection"
+            android:text="NOT CONNECTED"
+            android:textSize="20sp"
+            android:textColor="@android:color/white"
+            android:layout_centerInParent="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+    </RelativeLayout>
+
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="4">

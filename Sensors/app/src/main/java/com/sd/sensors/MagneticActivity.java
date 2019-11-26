@@ -15,6 +15,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorManager;
 import android.hardware.SensorEventListener;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.SeekBar;
 import android.content.Context;
@@ -22,6 +23,10 @@ import android.content.Context;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import android.provider.Settings;
+
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
 
 public class MagneticActivity extends AppCompatActivity implements SensorEventListener {
 
@@ -44,6 +49,8 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
 
     private TextView mTextLastSent;
 
+    private TextView mTextConnection;
+
     private boolean active = false;
 
     private double frequency = 0.5;
@@ -64,6 +71,11 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
 
     SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 
+    private static final String EXCHANGE_NAME = "topic_logs";
+    ConnectionFactory factory = null;
+    Connection connection = null;
+    Channel channel = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,12 +84,14 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
         mTextLastSent = findViewById(R.id.label_last_time);
         mTextLastSent.setText("No messages sent");
 
-        DataSendThread();
         UDPListener();
+        establishConnection();
 
         deviceID = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
 
         active = true;
+
+        mTextConnection = (TextView) findViewById(R.id.textConnection);
 
         // Initialize all view variables.
         mTextSensor = (TextView) findViewById(R.id.label_magnetic);
@@ -114,6 +128,8 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
         frequency = (double)1/(seekBar.getProgress() + 1);
         mTextFrequency = findViewById(R.id.textView);
         mTextFrequency.setText("Data sent every "+(seekBar.getProgress() + 1)+" second(s)");
+
+        publishToAMQP();
     }
 
     SeekBar.OnSeekBarChangeListener seekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
@@ -138,7 +154,9 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
     @Override
     protected void onDestroy() {
         lock.release();
+        active = false;
         super.onDestroy();
+        closeConnection();
     }
 
     @Override
@@ -165,6 +183,7 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
         // Unregister all sensor listeners in this callback so they don't
         // continue to use resources when the app is paused.
         mSensorManager.unregisterListener(this);
+        finish();
     }
 
     @Override
@@ -196,47 +215,91 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
     public void onAccuracyChanged(Sensor sensor, int i) {
     }
 
-    private void DataSendThread() {
-
-        Thread thread = new Thread(new Runnable() {
-
-            @Override
-            public void run() {
-                DatagramSocket aSocket = null;
-                try {
-                    aSocket = new DatagramSocket();
-                    localPort = aSocket.getLocalPort();
-                    while (active) {
-                        if (gatewayAddr.size() > 0) {
-                            try {
-                                for(int i=0; i<gatewayAddr.size(); i++) {
-                                    String message = currentValue[0]+","+currentValue[1]+","+currentValue[2];
-                                    aSocket.send(new DatagramPacket(message.getBytes(),
-                                            message.length(), gatewayAddr.get(i), gatewayPort));
-                                }
-                                mTextLastSent.post(new Runnable() {
-                                    public void run() {
-                                        mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
-                                    }
-                                });
-                                Thread.sleep((int)(1/frequency)*1000);
-                            } catch (IOException e) {
-                                System.out.println("IO: " + e.getMessage());
-                            } catch (InterruptedException e) {
-                                System.out.println("Interrupted: " + e.getMessage());
-                            }
-                        }
-                    }
-                } catch (SocketException e) {
-                    System.out.println("SE: " + e.getMessage());
-                } finally {
-                    if (aSocket != null) aSocket.close();
-                }
+    private void closeConnection() {
+        Thread thread = new Thread(() -> {
+            try {
+                channel.close();
+                connection.close();
+            } catch (IOException e) {
+                System.out.println("IOException: " + e.getMessage());
+            } catch (java.util.concurrent.TimeoutException e) {
+                System.out.println("TimeoutException: " + e.getMessage());
+            } catch (java.lang.NullPointerException e) {
+                System.out.println("NullPointerException: " + e.getMessage());
             }
-
         });
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void establishConnection() {
+
+        Thread thread = new Thread(() -> {
+            int attemptsCounter = 0;
+            while(gatewayAddr.isEmpty() && attemptsCounter < 3) {
+                try {
+                    Thread.sleep(2000 + attemptsCounter*500);
+                    attemptsCounter += 1;
+                } catch (InterruptedException e) {
+                    System.out.println("Interrupted: " + e.getMessage());
+                }
+            }
+
+            if(gatewayAddr.isEmpty())
+                return;
+
+            if (factory == null) {
+                factory = new ConnectionFactory();
+                factory.setAutomaticRecoveryEnabled(false);
+                String addr = gatewayAddr.get(0).toString();
+                factory.setHost(addr.replace("/", ""));
+                factory.setUsername("projetosd");
+                factory.setPassword("projetosd");
+            }
+
+            try {
+                connection = factory.newConnection();
+                channel = connection.createChannel();
+                channel.exchangeDeclare(EXCHANGE_NAME, "topic");
+            } catch (IOException e) {
+                Log.e("IOException", e.getMessage());
+                System.out.println("IOException: " + e.getMessage());
+            } catch (java.util.concurrent.TimeoutException e) {
+                Log.e("TimeoutException", e.getMessage());
+                System.out.println("TimeoutException: " + e.getMessage());
+            }
+        });
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void publishToAMQP() {
+        Thread publishThread = new Thread(() -> {
+            String routingKey = deviceID + "." + STRING_SENSOR_TYPE.toLowerCase();
+            while (active) {
+                try {
+                    if(channel != null && channel.isOpen()) {
+                        String message = String.valueOf(currentValue);
+                        channel.basicPublish(EXCHANGE_NAME, routingKey, null, message.getBytes("UTF-8"));
+                        mTextLastSent.post(() -> mTextLastSent.setText(
+                                "Last message sent at " + sdf.format(new Date())));
+                        mTextConnection.post(() -> mTextConnection.setText(
+                                "CONNECTED"));
+                        Thread.sleep((int)(1/frequency)*1000);
+                    } else {
+                        mTextConnection.post(() -> mTextConnection.setText(
+                                "NOT CONNECTED"));
+                        Thread.sleep(1000);
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Exception e) {
+                    System.out.println("Connection broken: " + e.getClass().getName());
+                }
+            }
+        });
+        publishThread.setDaemon(true);
+        publishThread.start();
     }
 
     private void UDPListener() {
@@ -256,11 +319,8 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
                     DatagramPacket messageOut = new DatagramPacket(multicast_msg.getBytes(),
                             multicast_msg.length(), groupAddress, groupPort);
                     mSocket.send(messageOut);
-                    mTextLastSent.post(new Runnable() {
-                        public void run() {
-                            mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
-                        }
-                    });
+                    mTextLastSent.post(() -> mTextLastSent.setText(
+                            "Last message sent at " + sdf.format(new Date())));
                     byte[] buffer = new byte[32];
                     while (active) {
                         DatagramPacket messageIn = new DatagramPacket(buffer, buffer.length);

@@ -8,6 +8,7 @@ import android.media.MediaPlayer;
 import android.media.AudioManager;
 
 import android.provider.Settings;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.io.IOException;
@@ -22,11 +23,17 @@ import java.util.Date;
 
 import android.util.Log;
 
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+
 public class SoundActivity extends AppCompatActivity {
 
     final String STRING_SENSOR_TYPE = "SOUND";
 
     private String deviceID;
+
+    private double frequency = 0.5;
 
     private boolean currentValue = false;
     private int currentVolume = 0;
@@ -35,6 +42,8 @@ public class SoundActivity extends AppCompatActivity {
 
     private TextView mTextLastSent;
     private TextView mTextCurrentValue;
+    private TextView mTextFrequency;
+    private TextView mTextConnection;
 
     private ArrayList<InetAddress> gatewayAddr = new ArrayList<java.net.InetAddress>();
 
@@ -57,6 +66,11 @@ public class SoundActivity extends AppCompatActivity {
 
     SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 
+    private static final String EXCHANGE_NAME = "topic_logs";
+    ConnectionFactory factory = null;
+    Connection connection = null;
+    Channel channel = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,6 +91,8 @@ public class SoundActivity extends AppCompatActivity {
 
         active = true;
 
+        mTextConnection = (TextView) findViewById(R.id.textConnection);
+
         try {
             aSocket = new DatagramSocket();
             localPort = aSocket.getLocalPort();
@@ -90,8 +106,8 @@ public class SoundActivity extends AppCompatActivity {
             }
         });
 
-        DataSendThread();
         UDPListener();
+        establishConnection();
 
         WifiManager wifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifi != null){
@@ -99,6 +115,80 @@ public class SoundActivity extends AppCompatActivity {
             lock.setReferenceCounted(false);
             lock.acquire();
         }
+
+        SeekBar seekBar = findViewById(R.id.seekBar);
+        seekBar.setOnSeekBarChangeListener(seekBarChangeListener);
+
+        frequency = (double)1/(seekBar.getProgress() + 1);
+        mTextFrequency = findViewById(R.id.textView);
+        mTextFrequency.setText("Data sent every "+(seekBar.getProgress() + 1)+" second(s)");
+
+        publishToAMQP();
+    }
+
+    SeekBar.OnSeekBarChangeListener seekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            // updated continuously as the user slides the thumb
+            frequency = (double)1/(progress + 1);
+            mTextFrequency.setText("Data sent every "+(progress + 1)+" second(s)");
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) {
+            // called when the user first touches the SeekBar
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+            // called after the user finishes moving the SeekBar
+        }
+    };
+
+    private void volumeUp() {
+        audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
+
+        mTextCurrentValue.post(() -> {
+            if(currentValue) {
+                mTextCurrentValue.setText("ON\nVOLUME: " + currentVolume);
+            } else {
+                mTextCurrentValue.setText("OFF\nVOLUME: " + currentVolume);
+            }
+        });
+    }
+
+    private void volumeDown() {
+        audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
+
+        mTextCurrentValue.post(() -> {
+            if(currentValue) {
+                mTextCurrentValue.setText("ON\nVOLUME: " + currentVolume);
+            } else {
+                mTextCurrentValue.setText("OFF\nVOLUME: " + currentVolume);
+            }
+        });
+    }
+
+    private void toggle() {
+        currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+        currentValue = !currentValue;
+        if (currentValue) {
+            mediaPlayer.seekTo(length);
+            mediaPlayer.start();
+        } else {
+            mediaPlayer.pause();
+            length = mediaPlayer.getCurrentPosition();
+        }
+
+        mTextCurrentValue.post(() -> {
+            if(currentValue) {
+                mTextCurrentValue.setText("ON\nVOLUME: " + currentVolume);
+            } else {
+                mTextCurrentValue.setText("OFF\nVOLUME: " + currentVolume);
+            }
+        });
     }
 
     @Override
@@ -112,88 +202,103 @@ public class SoundActivity extends AppCompatActivity {
         active = false;
         if (mediaPlayer != null) mediaPlayer.release();
         super.onStop();
+        finish();
     }
 
     @Override
     protected void onDestroy() {
         lock.release();
+        active = false;
         if (mediaPlayer != null) mediaPlayer.release();
+        closeConnection();
         super.onDestroy();
     }
 
-    private void DataSendThread() {
-
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    byte[] buffer = new byte[32];
-                    DatagramPacket data = new DatagramPacket(buffer, buffer.length);
-                    while (active) {
-                        aSocket.receive(data);
-                        if(!active) break;
-                        String msg_in
-                                = new String(data.getData(), 0, data.getLength());
-                        String msg_out;
-                        boolean valid = false;
-                        if (msg_in.equals("TOGGLE")) {
-                            valid = true;
-                            currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-                            currentValue = !currentValue;
-                            if (currentValue) {
-                                mediaPlayer.seekTo(length);
-                                mediaPlayer.start();
-                            } else {
-                                mediaPlayer.pause();
-                                length = mediaPlayer.getCurrentPosition();
-                            }
-                        } else if(msg_in.equals("VOLUP")) {
-                            valid = true;
-                            audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
-                                    AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
-                        } else if(msg_in.equals("VOLDOWN")) {
-                            valid = true;
-                            audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
-                                    AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
-                        }
-                        if(valid && gatewayAddr.size() > 0) {
-                            currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-                            if (currentValue) {
-                                msg_out = "ON," + currentVolume;
-                            } else {
-                                msg_out = "OFF," + currentVolume;
-                            }
-                            for(int i=0; i<gatewayAddr.size(); i++) {
-                                aSocket.send(new DatagramPacket(msg_out.getBytes(),
-                                        msg_out.length(), gatewayAddr.get(i), gatewayPort));
-                            }
-                            mTextLastSent.post(new Runnable() {
-                                public void run() {
-                                    mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
-                                }
-                            });
-                            mTextCurrentValue.post(new Runnable() {
-                                public void run() {
-                                    if(currentValue) {
-                                        mTextCurrentValue.setText("ON\nVOLUME: " + currentVolume);
-                                    } else {
-                                        mTextCurrentValue.setText("OFF\nVOLUME: " + currentVolume);
-                                    }
-                                }
-                            });
-                        }
-                    }
-                } catch (SocketException e) {
-                    System.out.println("SE: " + e.getMessage());
-                } catch (IOException e) {
-                    System.out.println("IO: " + e.getMessage());
-                } finally {
-                    if (aSocket != null) aSocket.close();
-                }
+    private void closeConnection() {
+        Thread thread = new Thread(() -> {
+            try {
+                channel.close();
+                connection.close();
+            } catch (IOException e) {
+                System.out.println("IOException: " + e.getMessage());
+            } catch (java.util.concurrent.TimeoutException e) {
+                System.out.println("TimeoutException: " + e.getMessage());
+            } catch (java.lang.NullPointerException e) {
+                System.out.println("NullPointerException: " + e.getMessage());
             }
         });
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void establishConnection() {
+
+        Thread thread = new Thread(() -> {
+            int attemptsCounter = 0;
+            while(gatewayAddr.isEmpty() && attemptsCounter < 3) {
+                try {
+                    Thread.sleep(2000 + attemptsCounter*500);
+                    attemptsCounter += 1;
+                } catch (InterruptedException e) {
+                    System.out.println("Interrupted: " + e.getMessage());
+                }
+            }
+
+            if(gatewayAddr.isEmpty())
+                return;
+
+            if (factory == null) {
+                factory = new ConnectionFactory();
+                factory.setAutomaticRecoveryEnabled(false);
+                String addr = gatewayAddr.get(0).toString();
+                factory.setHost(addr.replace("/", ""));
+                factory.setUsername("projetosd");
+                factory.setPassword("projetosd");
+            }
+
+            try {
+                connection = factory.newConnection();
+                channel = connection.createChannel();
+                channel.exchangeDeclare(EXCHANGE_NAME, "topic");
+            } catch (IOException e) {
+                Log.e("IOException", e.getMessage());
+                System.out.println("IOException: " + e.getMessage());
+            } catch (java.util.concurrent.TimeoutException e) {
+                Log.e("TimeoutException", e.getMessage());
+                System.out.println("TimeoutException: " + e.getMessage());
+            }
+        });
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void publishToAMQP() {
+        Thread publishThread = new Thread(() -> {
+            String routingKey = deviceID + "." + STRING_SENSOR_TYPE.toLowerCase();
+            while (active) {
+                try {
+                    if(channel != null && channel.isOpen()) {
+                        String message = String.valueOf(currentValue);
+                        channel.basicPublish(EXCHANGE_NAME, routingKey, null, message.getBytes("UTF-8"));
+                        mTextLastSent.post(() -> mTextLastSent.setText(
+                                "Last message sent at " + sdf.format(new Date())));
+                        mTextConnection.post(() -> mTextConnection.setText(
+                                "CONNECTED"));
+                        Thread.sleep((int)(1/frequency)*1000);
+                    } else {
+                        mTextConnection.post(() -> mTextConnection.setText(
+                                "NOT CONNECTED"));
+                        Thread.sleep(1000);
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Exception e) {
+                    System.out.println("Connection broken: " + e.getClass().getName());
+                }
+            }
+        });
+        publishThread.setDaemon(true);
+        publishThread.start();
     }
 
     private void UDPListener() {
@@ -213,11 +318,8 @@ public class SoundActivity extends AppCompatActivity {
                     DatagramPacket messageOut = new DatagramPacket(multicast_msg.getBytes(),
                             multicast_msg.length(), groupAddress, groupPort);
                     mSocket.send(messageOut);
-                    mTextLastSent.post(new Runnable() {
-                        public void run() {
-                            mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
-                        }
-                    });
+                    mTextLastSent.post(() -> mTextLastSent.setText(
+                            "Last message sent at " + sdf.format(new Date())));
                     byte[] buffer = new byte[32];
                     while (active) {
                         DatagramPacket messageIn = new DatagramPacket(buffer, buffer.length);

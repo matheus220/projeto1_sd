@@ -223,6 +223,8 @@ public class LightActivity extends AppCompatActivity implements SensorEventListe
                 System.out.println("IOException: " + e.getMessage());
             } catch (java.util.concurrent.TimeoutException e) {
                 System.out.println("TimeoutException: " + e.getMessage());
+            } catch (java.lang.NullPointerException e) {
+                System.out.println("NullPointerException: " + e.getMessage());
             }
         });
         thread.setDaemon(true);
