@@ -17,17 +17,17 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='sensor.proto',
-  package='projeto1_sd',
-  syntax='proto2',
-  serialized_options=None,
-  serialized_pb=_b('\n\x0csensor.proto\x12\x0bprojeto1_sd\"\xbe\x01\n\x06Sensor\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04\x61\x64\x64r\x18\x02 \x02(\t\x12\x0c\n\x04port\x18\x03 \x02(\x05\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\t\x12\x15\n\rlast_msg_date\x18\x06 \x02(\t\x12,\n\x04type\x18\x04 \x02(\x0e\x32\x1e.projeto1_sd.Sensor.SensorType\"9\n\nSensorType\x12\t\n\x05LIGHT\x10\x00\x12\x0c\n\x08MAGNETIC\x10\x01\x12\t\n\x05SOUND\x10\x02\x12\x07\n\x03LED\x10\x03\"&\n\x07\x43ommand\x12\n\n\x02id\x18\x01 \x02(\t\x12\x0f\n\x07\x63ommand\x18\x02 \x02(\t\"/\n\x07Message\x12$\n\x07sensors\x18\x01 \x03(\x0b\x32\x13.projeto1_sd.Sensor')
+  package='com.sd.sensors',
+  syntax='proto3',
+  serialized_options=_b('\n\016com.sd.sensorsB\013SensorProtoP\001\210\001\001'),
+  serialized_pb=_b('\n\x0csensor.proto\x12\x0e\x63om.sd.sensors\"\xc1\x01\n\x06Sensor\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04\x61\x64\x64r\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\t\x12\x15\n\rlast_msg_date\x18\x06 \x01(\t\x12/\n\x04type\x18\x04 \x01(\x0e\x32!.com.sd.sensors.Sensor.SensorType\"9\n\nSensorType\x12\t\n\x05LIGHT\x10\x00\x12\x0c\n\x08MAGNETIC\x10\x01\x12\t\n\x05SOUND\x10\x02\x12\x07\n\x03LED\x10\x03\"&\n\x07\x43ommand\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07\x63ommand\x18\x02 \x01(\t\"2\n\x07Message\x12\'\n\x07sensors\x18\x01 \x03(\x0b\x32\x16.com.sd.sensors.Sensor2O\n\x11SensorServiceGRPC\x12:\n\x04Send\x12\x17.com.sd.sensors.Command\x1a\x17.com.sd.sensors.Message\"\x00\x42\"\n\x0e\x63om.sd.sensorsB\x0bSensorProtoP\x01\x88\x01\x01\x62\x06proto3')
 )
 
 
 
 _SENSOR_SENSORTYPE = _descriptor.EnumDescriptor(
   name='SensorType',
-  full_name='projeto1_sd.Sensor.SensorType',
+  full_name='com.sd.sensors.Sensor.SensorType',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -50,57 +50,57 @@ _SENSOR_SENSORTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=163,
-  serialized_end=220,
+  serialized_start=169,
+  serialized_end=226,
 )
 _sym_db.RegisterEnumDescriptor(_SENSOR_SENSORTYPE)
 
 
 _SENSOR = _descriptor.Descriptor(
   name='Sensor',
-  full_name='projeto1_sd.Sensor',
+  full_name='com.sd.sensors.Sensor',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='id', full_name='projeto1_sd.Sensor.id', index=0,
+      name='id', full_name='com.sd.sensors.Sensor.id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='addr', full_name='projeto1_sd.Sensor.addr', index=1,
-      number=2, type=9, cpp_type=9, label=2,
+      name='addr', full_name='com.sd.sensors.Sensor.addr', index=1,
+      number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='port', full_name='projeto1_sd.Sensor.port', index=2,
-      number=3, type=5, cpp_type=1, label=2,
+      name='port', full_name='com.sd.sensors.Sensor.port', index=2,
+      number=3, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='data', full_name='projeto1_sd.Sensor.data', index=3,
+      name='data', full_name='com.sd.sensors.Sensor.data', index=3,
       number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='last_msg_date', full_name='projeto1_sd.Sensor.last_msg_date', index=4,
-      number=6, type=9, cpp_type=9, label=2,
+      name='last_msg_date', full_name='com.sd.sensors.Sensor.last_msg_date', index=4,
+      number=6, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='type', full_name='projeto1_sd.Sensor.type', index=5,
-      number=4, type=14, cpp_type=8, label=2,
+      name='type', full_name='com.sd.sensors.Sensor.type', index=5,
+      number=4, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -114,32 +114,32 @@ _SENSOR = _descriptor.Descriptor(
   ],
   serialized_options=None,
   is_extendable=False,
-  syntax='proto2',
+  syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=30,
-  serialized_end=220,
+  serialized_start=33,
+  serialized_end=226,
 )
 
 
 _COMMAND = _descriptor.Descriptor(
   name='Command',
-  full_name='projeto1_sd.Command',
+  full_name='com.sd.sensors.Command',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='id', full_name='projeto1_sd.Command.id', index=0,
-      number=1, type=9, cpp_type=9, label=2,
+      name='id', full_name='com.sd.sensors.Command.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='command', full_name='projeto1_sd.Command.command', index=1,
-      number=2, type=9, cpp_type=9, label=2,
+      name='command', full_name='com.sd.sensors.Command.command', index=1,
+      number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -152,24 +152,24 @@ _COMMAND = _descriptor.Descriptor(
   ],
   serialized_options=None,
   is_extendable=False,
-  syntax='proto2',
+  syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=222,
-  serialized_end=260,
+  serialized_start=228,
+  serialized_end=266,
 )
 
 
 _MESSAGE = _descriptor.Descriptor(
   name='Message',
-  full_name='projeto1_sd.Message',
+  full_name='com.sd.sensors.Message',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sensors', full_name='projeto1_sd.Message.sensors', index=0,
+      name='sensors', full_name='com.sd.sensors.Message.sensors', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -183,12 +183,12 @@ _MESSAGE = _descriptor.Descriptor(
   ],
   serialized_options=None,
   is_extendable=False,
-  syntax='proto2',
+  syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=262,
-  serialized_end=309,
+  serialized_start=268,
+  serialized_end=318,
 )
 
 _SENSOR.fields_by_name['type'].enum_type = _SENSOR_SENSORTYPE
@@ -202,23 +202,48 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 Sensor = _reflection.GeneratedProtocolMessageType('Sensor', (_message.Message,), {
   'DESCRIPTOR' : _SENSOR,
   '__module__' : 'sensor_pb2'
-  # @@protoc_insertion_point(class_scope:projeto1_sd.Sensor)
+  # @@protoc_insertion_point(class_scope:com.sd.sensors.Sensor)
   })
 _sym_db.RegisterMessage(Sensor)
 
 Command = _reflection.GeneratedProtocolMessageType('Command', (_message.Message,), {
   'DESCRIPTOR' : _COMMAND,
   '__module__' : 'sensor_pb2'
-  # @@protoc_insertion_point(class_scope:projeto1_sd.Command)
+  # @@protoc_insertion_point(class_scope:com.sd.sensors.Command)
   })
 _sym_db.RegisterMessage(Command)
 
 Message = _reflection.GeneratedProtocolMessageType('Message', (_message.Message,), {
   'DESCRIPTOR' : _MESSAGE,
   '__module__' : 'sensor_pb2'
-  # @@protoc_insertion_point(class_scope:projeto1_sd.Message)
+  # @@protoc_insertion_point(class_scope:com.sd.sensors.Message)
   })
 _sym_db.RegisterMessage(Message)
 
+
+DESCRIPTOR._options = None
+
+_SENSORSERVICEGRPC = _descriptor.ServiceDescriptor(
+  name='SensorServiceGRPC',
+  full_name='com.sd.sensors.SensorServiceGRPC',
+  file=DESCRIPTOR,
+  index=0,
+  serialized_options=None,
+  serialized_start=320,
+  serialized_end=399,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='Send',
+    full_name='com.sd.sensors.SensorServiceGRPC.Send',
+    index=0,
+    containing_service=None,
+    input_type=_COMMAND,
+    output_type=_MESSAGE,
+    serialized_options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_SENSORSERVICEGRPC)
+
+DESCRIPTOR.services_by_name['SensorServiceGRPC'] = _SENSORSERVICEGRPC
 
 # @@protoc_insertion_point(module_scope)

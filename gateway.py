@@ -16,7 +16,9 @@ import socketserver
 
 from threading import Thread
 from datetime import datetime
+import grpc
 import sensor_pb2
+import sensor_pb2_grpc
 
 logging.basicConfig()
 
@@ -148,7 +150,11 @@ async def ws_connection_handler(websocket, _):
             elif comm.id == "unbind":
                 consumer.queue_unbind(comm.command)
             elif comm.id == "grpc":
-                print(comm.command)
+                sensor_id,command = comm.command.split(',')
+                with grpc.insecure_channel('localhost:60071') as channel:
+                    stub = sensor_pb2_grpc.SensorServiceGRPCStub(channel)
+                    message = stub.Send(comm)
+
             elif comm.id == "rrpc":
                 sensor_id, command = comm.command.split(',')
                 rpc_queue_name = 'rpc_' + sensor_id
