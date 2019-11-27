@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package com.sd.sensors;
+
+option java_generic_services = true;
+option java_multiple_files = true;
+option java_package = "com.sd.sensors";
+option java_outer_classname = "SensorProto";
+
+message Sensor {
+    string id = 1;
+    string addr = 2;
+    int32 port = 3;
+    
+    string data = 5;
+    string last_msg_date = 6;
+
+    enum SensorType {
+        LIGHT = 0;
+        MAGNETIC = 1;
+        SOUND = 2;
+        LED = 3;
+    }
+    
+    SensorType type = 4;
+
+
+}
+
+message Command {
+    string id = 1;
+    string command = 2;
+}
+
+message Message {
+    repeated Sensor sensors = 1;
+}
+
+service SensorServiceGRPC {
+    rpc Send(Command) returns (Message) {}
+}

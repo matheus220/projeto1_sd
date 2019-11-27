@@ -1,11 +1,23 @@
 package com.sd.sensors;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.app.Activity;
+import android.os.AsyncTask;
+import android.text.TextUtils;
 import android.widget.GridLayout;
 import android.content.Intent;
 import androidx.cardview.widget.CardView;
 import android.view.View;
 import android.os.Bundle;
+
+import java.lang.ref.WeakReference;
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -17,6 +29,19 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mainGrid = (GridLayout) findViewById(R.id.mainGrid);
+
+        Server server = ServerBuilder.forPort(8094)
+                                     .addService(new MyGrpcServiceImpl()).build();
+
+        try{
+            server.start();
+
+            server.awaitTermination();
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+
+
 
         //Set Event
         setSingleEvent(mainGrid);
@@ -51,4 +76,22 @@ public class MainActivity extends AppCompatActivity {
             });
         }
     }
+
+    public static class MyGrpcServiceImpl extends SensorServiceGRPCGrpc.SensorServiceGRPCImplBase {
+        @Override
+        public void send(Command request, StreamObserver<Message> responseObserver){
+            System.out.println(request);
+
+            String comm = request.getCommand();
+
+            Sensor s = Sensor.newBuilder().setData("Hello").build();
+
+            Message response = Message.newBuilder().setSensors(0, s).build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+
+        }
+    }
+
 }
