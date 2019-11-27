@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraManager;
 import android.net.wifi.WifiManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
@@ -23,7 +24,9 @@ import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
 
 import android.util.Log;
 
@@ -32,6 +35,9 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 import com.rabbitmq.client.AMQP.BasicProperties;
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 
 public class LedActivity extends AppCompatActivity {
 
@@ -81,6 +87,9 @@ public class LedActivity extends AppCompatActivity {
     Connection connection2 = null;
     Channel channel2 = null;
 
+    final MyRpcServer myServer = new MyRpcServer();
+    private static final Logger logger = Logger.getLogger(MainActivity.class.getName());
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -101,6 +110,12 @@ public class LedActivity extends AppCompatActivity {
             localPort = aSocket.getLocalPort();
         } catch (SocketException e) {
             System.out.println("SE: " + e.getMessage());
+        }
+
+        try{
+            myServer.start();
+        }catch(Exception e){
+            throw new RuntimeException(e);
         }
 
         UDPListener();
@@ -195,6 +210,7 @@ public class LedActivity extends AppCompatActivity {
         lock.release();
         active = false;
         closeConnection();
+        myServer.stop();
         super.onDestroy();
     }
 
@@ -425,6 +441,48 @@ public class LedActivity extends AppCompatActivity {
         });
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private class GrpcTask extends AsyncTask<Void, Void, String> {
+
+        private String mHost = "";
+        private int mPort = 0;
+        private ManagedChannel mChannel;
+
+        private void SendCommand(ManagedChannel channel){
+            SensorServiceGRPCGrpc.SensorServiceGRPCBlockingStub stub = SensorServiceGRPCGrpc.newBlockingStub(channel);
+
+            Sensor.Builder sensorBuilder = Sensor.newBuilder();
+            sensorBuilder.setId("Meu id");
+
+            Command.Builder comm = Command.newBuilder();
+            comm.setCommand("COMANDO");
+            comm.setId("#ID");
+
+            stub.send(comm.build());
+        }
+
+        @Override
+        protected String doInBackground(Void... voids) {
+            try{
+                mChannel = ManagedChannelBuilder.forAddress(mHost,mPort)
+                            .build();
+                SendCommand(mChannel);
+                return null;
+            }catch(Exception e){
+
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            try{
+                mChannel.shutdown().awaitTermination(1, TimeUnit.SECONDS);
+            }catch(Exception e){
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
 

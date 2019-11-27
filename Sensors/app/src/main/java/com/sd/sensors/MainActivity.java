@@ -12,6 +12,7 @@ import android.view.View;
 import android.os.Bundle;
 
 import java.lang.ref.WeakReference;
+import java.util.logging.Logger;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -22,6 +23,7 @@ import io.grpc.ServerBuilder;
 public class MainActivity extends AppCompatActivity {
 
     GridLayout mainGrid;
+    private static final Logger logger = Logger.getLogger(MainActivity.class.getName());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mainGrid = (GridLayout) findViewById(R.id.mainGrid);
-
+        /*
         Server server = ServerBuilder.forPort(8094)
                                      .addService(new MyGrpcServiceImpl()).build();
 
@@ -39,9 +41,7 @@ public class MainActivity extends AppCompatActivity {
             server.awaitTermination();
         }catch (Exception e){
             System.out.println(e.getMessage());
-        }
-
-
+        }*/
 
         //Set Event
         setSingleEvent(mainGrid);
@@ -77,10 +77,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /*
     public static class MyGrpcServiceImpl extends SensorServiceGRPCGrpc.SensorServiceGRPCImplBase {
         @Override
         public void send(Command request, StreamObserver<Message> responseObserver){
             System.out.println(request);
+            logger.info("someone called me");
 
             String comm = request.getCommand();
 
@@ -92,6 +94,6 @@ public class MainActivity extends AppCompatActivity {
             responseObserver.onCompleted();
 
         }
-    }
+    }*/
 
 }
