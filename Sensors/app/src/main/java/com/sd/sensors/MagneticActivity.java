@@ -2,9 +2,7 @@ package com.sd.sensors;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
 import java.net.MulticastSocket;
 import android.net.wifi.WifiManager;
 import java.util.ArrayList;
@@ -279,7 +277,7 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
             while (active) {
                 try {
                     if(channel != null && channel.isOpen()) {
-                        String message = String.valueOf(currentValue);
+                        String message = currentValue[0]+","+currentValue[1]+","+currentValue[2];
                         channel.basicPublish(EXCHANGE_NAME, routingKey, null, message.getBytes("UTF-8"));
                         mTextLastSent.post(() -> mTextLastSent.setText(
                                 "Last message sent at " + sdf.format(new Date())));

@@ -90,12 +90,12 @@
     <script src="js/jquery-3.4.1.min.js"></script>
     <script>
         var sensors = [];
+        var rpc_opt = "rrpc";
 
         function generateItem(sensorName, sensorType, measure, measureDate) {
             var data = "";
             var image = "";
             var buttons = "";
-            var rpc_opt = "rrpc";
 
             if (!measure) data = "No data received";
 
@@ -112,16 +112,16 @@
                     image = "sound";
                     if (measure) data = measure.status + "<br/> VOLUME: " + measure.volume;
                     else data = "OFF";
-                    func1 = "send_action('" + sensorName + "', 'TOGGLE')";
-                    func2 = "send_action('" + sensorName + "', 'VOLUP')";
-                    func3 = "send_action('" + sensorName + "', 'VOLDOWN')";
+                    func1 = "send_action('action','" + sensorName+"_"+sensorType.toLowerCase()+',toggle' + "')";
+                    func2 = "send_action('action','" + sensorName+"_"+sensorType.toLowerCase()+',volup' + "')";
+                    func3 = "send_action('action','" + sensorName+"_"+sensorType.toLowerCase()+',voldown' + "')";
                     buttons = "<div class='btn-group'> <button onclick=\"" + func1 + "\" type='button' class='btn btn-sm btn-outline-secondary'>TOGGLE</button> <button onclick=\"" + func2 + "\" type='button' class='btn btn-sm btn-outline-secondary'>VOL+</button> <button onclick=\"" + func3 + "\" type='button' class='btn btn-sm btn-outline-secondary'>VOL-</button> </div>";
                     break;
                 case "LED":
                     image = "light";
                     if (measure) data = measure;
                     else data = "OFF";
-                    func = "send_action('" + sensorName + "', 'TOGGLE')";
+                    func = "send_action('action','" + sensorName+"_"+sensorType.toLowerCase()+',toggle' + "')";
                     buttons = '<button onclick="' + func + "\" type='button' class='btn btn-sm btn-outline-secondary'>TOGGLE</button>";
                     break;
                 default:
@@ -147,7 +147,7 @@
             message.sensors.forEach(s => {
                 let exists = false;
                 for (let i=0; i < sensors.length; i++) {
-                    if (sensors[i].addr === s['addr']) {
+                    if (sensors[i].addr === s['addr'] && sensors[i].type === s['type']) {
                         sensors[i] = s;
                         exists = true;
                         break;
@@ -211,13 +211,17 @@
             document.getElementById("items_container").innerHTML = displayArray;
         }
 
-        function send_action(sensorID, act) {
+        function send_action(id, command) {
+        	if (id === 'action') {
+        		id = rpc_opt;
+        	}
             var payload = CommandBuilder.encode(
                 CommandBuilder.create({
-                    id: sensorID,
-                    command: act
+                    id: id,
+                    command: command
                 })
             ).finish();
+            console.log(id, command);
             websocket.send(payload);
         }
 
@@ -235,7 +239,7 @@
 
         $(function(){
             $("input:radio").click(function(){
-                rpc = this.id;
+                rpc_opt = this.id;
             });
         });
     </script>

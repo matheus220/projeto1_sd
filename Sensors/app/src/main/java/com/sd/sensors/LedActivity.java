@@ -11,10 +11,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
 
 import android.provider.Settings;
-import android.widget.CompoundButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.ToggleButton;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -25,12 +23,15 @@ import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.concurrent.TimeoutException;
 
 import android.util.Log;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DeliverCallback;
+import com.rabbitmq.client.AMQP.BasicProperties;
 
 public class LedActivity extends AppCompatActivity {
 
@@ -76,6 +77,9 @@ public class LedActivity extends AppCompatActivity {
     ConnectionFactory factory = null;
     Connection connection = null;
     Channel channel = null;
+
+    Connection connection2 = null;
+    Channel channel2 = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -149,6 +153,7 @@ public class LedActivity extends AppCompatActivity {
         mTextFrequency.setText("Data sent every "+(seekBar.getProgress() + 1)+" second(s)");
 
         publishToAMQP();
+        RPCServer();
     }
 
     SeekBar.OnSeekBarChangeListener seekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
@@ -180,7 +185,9 @@ public class LedActivity extends AppCompatActivity {
     protected void onStop() {
         active = false;
         switchFlashLight(false);
+        currentValue = false;
         super.onStop();
+        finish();
     }
 
     @Override
@@ -204,11 +211,6 @@ public class LedActivity extends AppCompatActivity {
         alert.show();
     }
 
-    private void toggle() {
-        currentValue = !currentValue;
-        switchFlashLight(currentValue);
-    }
-
     public void switchFlashLight(boolean status) {
         try {
             mCameraManager.setTorchMode(mCameraId, status);
@@ -217,9 +219,27 @@ public class LedActivity extends AppCompatActivity {
         }
     }
 
+    public void toggle() {
+        currentValue = !currentValue;
+        switchFlashLight(currentValue);
+
+        mTextLastSent.post(() -> {
+            mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
+        });
+        mTextCurrentValue.post(() -> {
+            if(currentValue) {
+                mTextCurrentValue.setText("ON");
+            } else {
+                mTextCurrentValue.setText("OFF");
+            }
+        });
+    }
+
     private void closeConnection() {
         Thread thread = new Thread(() -> {
             try {
+                channel2.close();
+                connection2.close();
                 channel.close();
                 connection.close();
             } catch (IOException e) {
@@ -228,6 +248,8 @@ public class LedActivity extends AppCompatActivity {
                 System.out.println("TimeoutException: " + e.getMessage());
             } catch (java.lang.NullPointerException e) {
                 System.out.println("NullPointerException: " + e.getMessage());
+            } catch (com.rabbitmq.client.AlreadyClosedException e) {
+                System.out.println("AlreadyClosedException: " + e.getMessage());
             }
         });
         thread.setDaemon(true);
@@ -281,7 +303,12 @@ public class LedActivity extends AppCompatActivity {
             while (active) {
                 try {
                     if(channel != null && channel.isOpen()) {
-                        String message = String.valueOf(currentValue);
+                        String message;
+                        if(currentValue) {
+                            message = "ON";
+                        } else {
+                            message = "OFF";
+                        }
                         channel.basicPublish(EXCHANGE_NAME, routingKey, null, message.getBytes("UTF-8"));
                         mTextLastSent.post(() -> mTextLastSent.setText(
                                 "Last message sent at " + sdf.format(new Date())));
@@ -302,6 +329,51 @@ public class LedActivity extends AppCompatActivity {
         });
         publishThread.setDaemon(true);
         publishThread.start();
+    }
+
+    private void RPCServer() {
+        String rpc_queue = "rpc_" + deviceID + "_led";
+
+        Thread rpcThread = new Thread(() -> {
+            try {
+                while(factory == null) {
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e) {
+                        System.out.println("Interrupted: " + e.getMessage());
+                    }
+                }
+                connection2 = factory.newConnection();
+                channel2 = connection.createChannel();
+
+                channel2.queueDeclare(rpc_queue, false, true, true, null);
+                Log.e("RPC", " [*] Waiting for messages. To exit press CTRL+C");
+
+                DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+                    BasicProperties replyProps = new BasicProperties
+                            .Builder()
+                            .correlationId(delivery.getProperties().getCorrelationId())
+                            .build();
+                    String message = new String(delivery.getBody(), "UTF-8");
+                    if (message.equals("toggle") && active) {
+                        toggle();
+                        String msg_out;
+                        if(currentValue) {
+                            msg_out = "ON";
+                        } else {
+                            msg_out = "OFF";
+                        }
+                        channel2.basicPublish("", delivery.getProperties().getReplyTo(),
+                                replyProps, msg_out.getBytes("UTF-8"));
+                    }
+                };
+                channel2.basicConsume(rpc_queue, true, deliverCallback, consumerTag -> { });
+            } catch(IOException | TimeoutException e) {
+                System.out.println("IOException: " + e.getMessage());
+            }
+        });
+        rpcThread.setDaemon(true);
+        rpcThread.start();
     }
 
     private void UDPListener() {

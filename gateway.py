@@ -64,9 +64,15 @@ class Consumer(Thread):
 
     def callback(self, ch, method, properties, body):
         print("\n[<-] %r:%r" % (method.routing_key, body))
+
+        if properties.correlation_id:
+            sensor_name, sensor_type = properties.correlation_id.split('.')
+        else:
+            sensor_name, sensor_type = method.routing_key.split('.')
+
         _ = sensor_pb2.Message()
         msg = _.sensors.add()
-        sensor_name, sensor_type = method.routing_key.split('.')
+        
         sensor_type = sensor_type.upper()
         msg.addr = sensor_name
         msg.port = 5000
@@ -120,6 +126,14 @@ class Consumer(Thread):
         print(" |--- Exchange name: " + Consumer.EXCHANGE_NAME)
         print(" |--- Queue name: " + self.queue_name)
 
+    def rpc_call(self, routing_key, command):
+        _, device_id, sensor_type = routing_key.split("_")
+        self.channel.basic_publish(exchange='', 
+                                   routing_key=routing_key, 
+                                   properties=pika.BasicProperties(reply_to = self.queue_name,
+                                                                   correlation_id = device_id+'.'+sensor_type),
+                                   body=command)
+
 
 async def ws_connection_handler(websocket, _):
     consumer = Consumer(websocket)
@@ -136,7 +150,10 @@ async def ws_connection_handler(websocket, _):
             elif comm.id == "grpc":
                 print(comm.command)
             elif comm.id == "rrpc":
-                print(comm.command)
+                sensor_id, command = comm.command.split(',')
+                rpc_queue_name = 'rpc_' + sensor_id
+                consumer.rpc_call(rpc_queue_name, command)
+                print(rpc_queue_name, command)
             else:
                 logging.error("unsupported event")
     finally:

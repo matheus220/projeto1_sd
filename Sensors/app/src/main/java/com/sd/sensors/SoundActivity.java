@@ -20,12 +20,15 @@ import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.concurrent.TimeoutException;
 
 import android.util.Log;
 
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DeliverCallback;
 
 public class SoundActivity extends AppCompatActivity {
 
@@ -70,6 +73,9 @@ public class SoundActivity extends AppCompatActivity {
     ConnectionFactory factory = null;
     Connection connection = null;
     Channel channel = null;
+
+    Connection connection2 = null;
+    Channel channel2 = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,6 +130,7 @@ public class SoundActivity extends AppCompatActivity {
         mTextFrequency.setText("Data sent every "+(seekBar.getProgress() + 1)+" second(s)");
 
         publishToAMQP();
+        RPCServer();
     }
 
     SeekBar.OnSeekBarChangeListener seekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
@@ -149,6 +156,11 @@ public class SoundActivity extends AppCompatActivity {
         audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
                 AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
 
+        currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+
+        mTextLastSent.post(() -> {
+            mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
+        });
         mTextCurrentValue.post(() -> {
             if(currentValue) {
                 mTextCurrentValue.setText("ON\nVOLUME: " + currentVolume);
@@ -162,6 +174,11 @@ public class SoundActivity extends AppCompatActivity {
         audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
                 AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
 
+        currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+
+        mTextLastSent.post(() -> {
+            mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
+        });
         mTextCurrentValue.post(() -> {
             if(currentValue) {
                 mTextCurrentValue.setText("ON\nVOLUME: " + currentVolume);
@@ -182,6 +199,9 @@ public class SoundActivity extends AppCompatActivity {
             length = mediaPlayer.getCurrentPosition();
         }
 
+        mTextLastSent.post(() -> {
+            mTextLastSent.setText("Last message sent at " + sdf.format(new Date()));
+        });
         mTextCurrentValue.post(() -> {
             if(currentValue) {
                 mTextCurrentValue.setText("ON\nVOLUME: " + currentVolume);
@@ -217,6 +237,8 @@ public class SoundActivity extends AppCompatActivity {
     private void closeConnection() {
         Thread thread = new Thread(() -> {
             try {
+                channel2.close();
+                connection2.close();
                 channel.close();
                 connection.close();
             } catch (IOException e) {
@@ -225,6 +247,8 @@ public class SoundActivity extends AppCompatActivity {
                 System.out.println("TimeoutException: " + e.getMessage());
             } catch (java.lang.NullPointerException e) {
                 System.out.println("NullPointerException: " + e.getMessage());
+            } catch (com.rabbitmq.client.AlreadyClosedException e) {
+                System.out.println("AlreadyClosedException: " + e.getMessage());
             }
         });
         thread.setDaemon(true);
@@ -278,7 +302,13 @@ public class SoundActivity extends AppCompatActivity {
             while (active) {
                 try {
                     if(channel != null && channel.isOpen()) {
-                        String message = String.valueOf(currentValue);
+                        String message;
+                        currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                        if (currentValue) {
+                            message = "ON," + currentVolume;
+                        } else {
+                            message = "OFF," + currentVolume;
+                        }
                         channel.basicPublish(EXCHANGE_NAME, routingKey, null, message.getBytes("UTF-8"));
                         mTextLastSent.post(() -> mTextLastSent.setText(
                                 "Last message sent at " + sdf.format(new Date())));
@@ -299,6 +329,58 @@ public class SoundActivity extends AppCompatActivity {
         });
         publishThread.setDaemon(true);
         publishThread.start();
+    }
+
+    private void RPCServer() {
+        String rpc_queue = "rpc_" + deviceID + "_sound";
+
+        Thread rpcThread = new Thread(() -> {
+            try {
+                while(factory == null) {
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e) {
+                        System.out.println("Interrupted: " + e.getMessage());
+                    }
+                }
+                connection2 = factory.newConnection();
+                channel2 = connection.createChannel();
+
+                channel2.queueDeclare(rpc_queue, false, true, true, null);
+                Log.e("RPC", " [*] Waiting for messages. To exit press CTRL+C");
+
+                DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+                    AMQP.BasicProperties replyProps = new AMQP.BasicProperties
+                            .Builder()
+                            .correlationId(delivery.getProperties().getCorrelationId())
+                            .build();
+                    String message = new String(delivery.getBody(), "UTF-8");
+                    if (active) {
+                        if (message.equals("toggle")) {
+                            toggle();
+                        } else if (message.equals("volup")) {
+                            volumeUp();
+                        } else if (message.equals("voldown")) {
+                            volumeDown();
+                        }
+                        String msg_out;
+                        currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                        if (currentValue) {
+                            msg_out = "ON," + currentVolume;
+                        } else {
+                            msg_out = "OFF," + currentVolume;
+                        }
+                        channel2.basicPublish("", delivery.getProperties().getReplyTo(),
+                                replyProps, msg_out.getBytes("UTF-8"));
+                    }
+                };
+                channel2.basicConsume(rpc_queue, true, deliverCallback, consumerTag -> { });
+            } catch(IOException | TimeoutException e) {
+                System.out.println("IOException: " + e.getMessage());
+            }
+        });
+        rpcThread.setDaemon(true);
+        rpcThread.start();
     }
 
     private void UDPListener() {
