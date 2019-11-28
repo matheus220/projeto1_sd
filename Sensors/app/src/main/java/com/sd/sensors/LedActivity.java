@@ -39,7 +39,7 @@ import com.rabbitmq.client.AMQP.BasicProperties;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
-public class LedActivity extends AppCompatActivity {
+public class LedActivity extends AppCompatActivity implements Activator {
 
     private CameraManager mCameraManager;
     private String mCameraId;
@@ -113,7 +113,7 @@ public class LedActivity extends AppCompatActivity {
         }
 
         try{
-            myServer.start();
+            myServer.start(this);
         }catch(Exception e){
             throw new RuntimeException(e);
         }
@@ -441,6 +441,11 @@ public class LedActivity extends AppCompatActivity {
         });
         thread.setDaemon(true);
         thread.start();
+    }
+
+    @Override
+    public void Do() {
+        toggle();
     }
 
     private class GrpcTask extends AsyncTask<Void, Void, String> {
