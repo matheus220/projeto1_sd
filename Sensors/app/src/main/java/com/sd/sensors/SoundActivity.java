@@ -259,9 +259,9 @@ public class SoundActivity extends AppCompatActivity {
 
         Thread thread = new Thread(() -> {
             int attemptsCounter = 0;
-            while(gatewayAddr.isEmpty() && attemptsCounter < 3) {
+            while(gatewayAddr.isEmpty() && attemptsCounter < 10) {
                 try {
-                    Thread.sleep(2000 + attemptsCounter*500);
+                    Thread.sleep(1500 + attemptsCounter*500);
                     attemptsCounter += 1;
                 } catch (InterruptedException e) {
                     System.out.println("Interrupted: " + e.getMessage());
