@@ -12,6 +12,13 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+    packagingOptions {
+        exclude 'META-INF/INDEX.LIST'
+        exclude 'META-INF/io.netty.versions.properties'
+        // FIXME Really wish this was merge instead; netty may be accidentally chosen as client.
+        // It looks like maybe the buildTools are broken for merge.
+        pickFirst 'META-INF/services/io.grpc.ManagedChannelProvider'
+    }
     buildTypes {
         release {
             minifyEnabled false
@@ -55,8 +62,14 @@ dependencies {
     implementation files('libs/slf4j-simple-1.7.26.jar')
     implementation files('libs/amqp-client-5.7.1.jar')
 
-    implementation 'javax.annotation:javax.annotation-api:1.2'
-    implementation 'io.grpc:grpc-netty-shaded:1.25.0'
+    implementation 'io.grpc:grpc-netty:1.25.0'
     implementation 'io.grpc:grpc-protobuf:1.25.0'
     implementation 'io.grpc:grpc-stub:1.25.0'
+    implementation 'io.grpc:grpc-all:1.25.0'
+    implementation 'io.grpc:grpc-okhttp:1.25.0'
+    implementation 'com.squareup.okhttp:okhttp:2.2.0'
+
+    implementation 'io.grpc:grpc-protobuf-nano:1.21.1'
+    //implementation 'io.grpc:grpc-netty-shaded:1.25.0'
+    implementation 'javax.annotation:javax.annotation-api:1.2'
 }

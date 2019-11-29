@@ -16,6 +16,8 @@ public class MyGrpcServiceImpl extends SensorServiceGRPCImplBase {
         this.act = activator;
     }
 
+
+
     @Override
     public void send(Command request, StreamObserver<Message> responseObserver){
         System.out.println(request);
@@ -25,7 +27,9 @@ public class MyGrpcServiceImpl extends SensorServiceGRPCImplBase {
 
         Sensor s = Sensor.newBuilder().setData("Sensor Ativado").build();
 
-        Message response = Message.newBuilder().setSensors(999, s).build();
+
+
+        Message response = Message.newBuilder().addSensors(s).build();
 
         this.act.Do();
 

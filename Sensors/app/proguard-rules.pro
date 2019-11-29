@@ -22,3 +22,5 @@
 -keep class io.grpc.internal.DnsNameResolverProvider
 -keep class io.grpc.okhttp.OkHttpChannelProvider
 -keep class io.grpc.netty.NettyChannelProvider
+-dontwarn com.google.common.**
+-dontwarn okio.**

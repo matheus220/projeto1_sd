@@ -10,10 +10,11 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
+import io.grpc.netty.NettyServerBuilder;
 
 public class MyRpcServer {
     private static final Logger logger = Logger.getLogger(MyRpcServer.class.getName());
-    private int port = 50051;
+    private int port = 8092;
     private Server server;
 
     public void start(Activator act){
@@ -27,9 +28,9 @@ public class MyRpcServer {
                     return next.startCall(call,headers);
                 }
             };
-            server = ServerBuilder.forPort(port)
+            server = NettyServerBuilder.forPort(port)
                     .addService(new MyGrpcServiceImpl(act))
-                    .addService(ServerInterceptors.intercept(new MyGrpcServiceImpl(act),si))
+                    //.addService(ServerInterceptors.intercept(new MyGrpcServiceImpl(act),si))
                     .build()
                     .start();
             logger.info("Server started, listening on " + port);
@@ -40,7 +41,7 @@ public class MyRpcServer {
                 }
             });
         }catch(Exception e){
-
+            System.err.println(e.getMessage());
         }
     }
 
