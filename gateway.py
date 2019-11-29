@@ -65,10 +65,7 @@ class Consumer(Thread):
     def callback(self, ch, method, properties, body):
         print("\n[<-] %r:%r" % (method.routing_key, body))
 
-        if properties.correlation_id:
-            sensor_name, sensor_type = properties.correlation_id.split('.')
-        else:
-            sensor_name, sensor_type = method.routing_key.split('.')
+        sensor_name, sensor_type = method.routing_key.split('.')
 
         _ = sensor_pb2.Message()
         msg = _.sensors.add()
