@@ -145,7 +145,14 @@ async def ws_connection_handler(websocket, _):
             elif comm.id == "unbind":
                 consumer.queue_unbind(comm.command)
             elif comm.id == "grpc":
-                print(comm.command)
+                sensor_id, command = comm.command.split(',')
+                device_id, sensor_type = sensor_id.split('_')
+                sensor_id = device_id + '_' + sensor_type.upper()
+                try:
+                    device_ip = ADDR_ID_MAP[sensor_id][0]
+                    print("CHEGOU: ", device_ip)
+                except KeyError:
+                    print("gRPC call to unknow device!")
             elif comm.id == "rrpc":
                 sensor_id, command = comm.command.split(',')
                 rpc_queue_name = 'rpc_' + sensor_id
