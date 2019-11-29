@@ -139,7 +139,7 @@
 
         var periodicCall = setInterval(function(){checkSensorActivity();}, 20000);
 
-        var serverIP = "10.41.101.45";
+        var serverIP = "192.168.0.13";
         var websocket = new WebSocket("ws://" + serverIP + ":6789/");
         websocket.binaryType = "arraybuffer";
         websocket.onmessage = function(ev) {

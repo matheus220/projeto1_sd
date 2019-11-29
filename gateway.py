@@ -151,7 +151,7 @@ async def ws_connection_handler(websocket, _):
                 consumer.queue_unbind(comm.command)
             elif comm.id == "grpc":
                 sensor_id,command = comm.command.split(',')
-                with grpc.insecure_channel('localhost:60071') as channel:
+                with grpc.insecure_channel('192.168.0.7:8092') as channel:
                     stub = sensor_pb2_grpc.SensorServiceGRPCStub(channel)
                     message = stub.Send(comm)
 
