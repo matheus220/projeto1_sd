@@ -259,9 +259,9 @@ public class SoundActivity extends AppCompatActivity {
 
         Thread thread = new Thread(() -> {
             int attemptsCounter = 0;
-            while(gatewayAddr.isEmpty() && attemptsCounter < 3) {
+            while(gatewayAddr.isEmpty() && attemptsCounter < 10) {
                 try {
-                    Thread.sleep(2000 + attemptsCounter*500);
+                    Thread.sleep(1500 + attemptsCounter*500);
                     attemptsCounter += 1;
                 } catch (InterruptedException e) {
                     System.out.println("Interrupted: " + e.getMessage());
@@ -370,8 +370,9 @@ public class SoundActivity extends AppCompatActivity {
                         } else {
                             msg_out = "OFF," + currentVolume;
                         }
-                        channel2.basicPublish("", delivery.getProperties().getReplyTo(),
-                                replyProps, msg_out.getBytes("UTF-8"));
+                        String routingKey = deviceID + "." + STRING_SENSOR_TYPE.toLowerCase();
+                        channel2.basicPublish(EXCHANGE_NAME, routingKey,
+                                null, msg_out.getBytes("UTF-8"));
                     }
                 };
                 channel2.basicConsume(rpc_queue, true, deliverCallback, consumerTag -> { });

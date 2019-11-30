@@ -15,7 +15,6 @@
 
     <!-- Custom styles for this template -->
     <link href="css/style.css" rel="stylesheet" />
-    <script src="https://cdn.rawgit.com/dcodeIO/protobuf.js/6.8.8/dist/protobuf.js"></script>
 </head>
 
 <body>
@@ -88,6 +87,7 @@
 
     <script src="js/bootstrap.min.js"></script>
     <script src="js/jquery-3.4.1.min.js"></script>
+    <script src="js/protobuf.js"></script>
     <script>
         var sensors = [];
         var rpc_opt = "rrpc";
@@ -145,6 +145,7 @@
         websocket.onmessage = function(ev) {
             message = MessageBuilder.decode(new Uint8Array(ev.data));
             message.sensors.forEach(s => {
+                s['arrival_date'] = new Date();
                 let exists = false;
                 for (let i=0; i < sensors.length; i++) {
                     if (sensors[i].addr === s['addr'] && sensors[i].type === s['type']) {
@@ -157,7 +158,6 @@
                     sensors.push(s);
                 }
             });
-            console.log(sensors);
             loadItems();
         };
 
@@ -173,7 +173,7 @@
             if (sensors.length !== 0) {
                 let initialSize = sensors.length;
                 sensors = sensors.filter(function(s, index){
-                    let date = new Date(s.lastMsgDate);
+                    let date = new Date(s.arrival_date);
                     let currentDate = new Date()
                     console.log((currentDate - date)/1000);
                     return (currentDate - date)/1000 < 20;
@@ -221,7 +221,6 @@
                     command: command
                 })
             ).finish();
-            console.log(id, command);
             websocket.send(payload);
         }
 

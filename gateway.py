@@ -67,10 +67,7 @@ class Consumer(Thread):
     def callback(self, ch, method, properties, body):
         print("\n[<-] %r:%r" % (method.routing_key, body))
 
-        if properties.correlation_id:
-            sensor_name, sensor_type = properties.correlation_id.split('.')
-        else:
-            sensor_name, sensor_type = method.routing_key.split('.')
+        sensor_name, sensor_type = method.routing_key.split('.')
 
         _ = sensor_pb2.Message()
         msg = _.sensors.add()
@@ -150,11 +147,16 @@ async def ws_connection_handler(websocket, _):
             elif comm.id == "unbind":
                 consumer.queue_unbind(comm.command)
             elif comm.id == "grpc":
-                sensor_id,command = comm.command.split(',')
-                with grpc.insecure_channel('192.168.0.7:8092') as channel:
-                    stub = sensor_pb2_grpc.SensorServiceGRPCStub(channel)
-                    message = stub.Send(comm)
-
+                sensor_id, command = comm.command.split(',')
+                device_id, sensor_type = sensor_id.split('_')
+                sensor_id = device_id + '_' + sensor_type.upper()
+                try:
+                    device_ip = ADDR_ID_MAP[sensor_id][0]
+                    with grpc.insecure_channel(f'{device_id}:8092') as channel:
+                        stub = sensor_pb2_grpc.SensorServiceGRPCStub(channel)
+                        message = stub.Send(comm)
+                except KeyError:
+                    print("gRPC call to unknow device!")
             elif comm.id == "rrpc":
                 sensor_id, command = comm.command.split(',')
                 rpc_queue_name = 'rpc_' + sensor_id
