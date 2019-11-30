@@ -457,48 +457,4 @@ public class LedActivity extends AppCompatActivity implements Activator {
     public void Do(String... params) {
         toggle();
     }
-/*
-    private class GrpcTask extends AsyncTask<Void, Void, String> {
-
-        private String mHost = "";
-        private int mPort = 0;
-        private ManagedChannel mChannel;
-
-        private void SendCommand(ManagedChannel channel){
-            SensorServiceGRPCGrpc.SensorServiceGRPCBlockingStub stub = SensorServiceGRPCGrpc.newBlockingStub(channel);
-
-            Sensor.Builder sensorBuilder = Sensor.newBuilder();
-            sensorBuilder.setId("Meu id");
-
-            Command.Builder comm = Command.newBuilder();
-            comm.setCommand("COMANDO");
-            comm.setId("#ID");
-
-            stub.send(comm.build());
-        }
-
-        @Override
-        protected String doInBackground(Void... voids) {
-            try{
-                mChannel = ManagedChannelBuilder.forAddress(mHost,mPort)
-                            .build();
-                SendCommand(mChannel);
-                return null;
-            }catch(Exception e){
-
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String s) {
-            try{
-                mChannel.shutdown().awaitTermination(1, TimeUnit.SECONDS);
-            }catch(Exception e){
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-*/
-
 }
