@@ -4,7 +4,7 @@ import grpc
 import sensor_pb2 as sensor__pb2
 
 
-class SensorServiceGRPCStub(object):
+class SensorServiceStub(object):
   # missing associated documentation comment in .proto file
   pass
 
@@ -15,13 +15,13 @@ class SensorServiceGRPCStub(object):
       channel: A grpc.Channel.
     """
     self.Send = channel.unary_unary(
-        '/com.sd.sensors.SensorServiceGRPC/Send',
+        '/com.sd.sensors.SensorService/Send',
         request_serializer=sensor__pb2.Command.SerializeToString,
         response_deserializer=sensor__pb2.Message.FromString,
         )
 
 
-class SensorServiceGRPCServicer(object):
+class SensorServiceServicer(object):
   # missing associated documentation comment in .proto file
   pass
 
@@ -33,7 +33,7 @@ class SensorServiceGRPCServicer(object):
     raise NotImplementedError('Method not implemented!')
 
 
-def add_SensorServiceGRPCServicer_to_server(servicer, server):
+def add_SensorServiceServicer_to_server(servicer, server):
   rpc_method_handlers = {
       'Send': grpc.unary_unary_rpc_method_handler(
           servicer.Send,
@@ -42,5 +42,5 @@ def add_SensorServiceGRPCServicer_to_server(servicer, server):
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
-      'com.sd.sensors.SensorServiceGRPC', rpc_method_handlers)
+      'com.sd.sensors.SensorService', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))

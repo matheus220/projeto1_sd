@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='com.sd.sensors',
   syntax='proto3',
   serialized_options=_b('\n\016com.sd.sensorsB\013SensorProtoP\001\210\001\001'),
-  serialized_pb=_b('\n\x0csensor.proto\x12\x0e\x63om.sd.sensors\"\xc1\x01\n\x06Sensor\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04\x61\x64\x64r\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\t\x12\x15\n\rlast_msg_date\x18\x06 \x01(\t\x12/\n\x04type\x18\x04 \x01(\x0e\x32!.com.sd.sensors.Sensor.SensorType\"9\n\nSensorType\x12\t\n\x05LIGHT\x10\x00\x12\x0c\n\x08MAGNETIC\x10\x01\x12\t\n\x05SOUND\x10\x02\x12\x07\n\x03LED\x10\x03\"&\n\x07\x43ommand\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07\x63ommand\x18\x02 \x01(\t\"2\n\x07Message\x12\'\n\x07sensors\x18\x01 \x03(\x0b\x32\x16.com.sd.sensors.Sensor2O\n\x11SensorServiceGRPC\x12:\n\x04Send\x12\x17.com.sd.sensors.Command\x1a\x17.com.sd.sensors.Message\"\x00\x42\"\n\x0e\x63om.sd.sensorsB\x0bSensorProtoP\x01\x88\x01\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x0csensor.proto\x12\x0e\x63om.sd.sensors\"\xc1\x01\n\x06Sensor\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04\x61\x64\x64r\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\t\x12\x15\n\rlast_msg_date\x18\x06 \x01(\t\x12/\n\x04type\x18\x04 \x01(\x0e\x32!.com.sd.sensors.Sensor.SensorType\"9\n\nSensorType\x12\t\n\x05LIGHT\x10\x00\x12\x0c\n\x08MAGNETIC\x10\x01\x12\t\n\x05SOUND\x10\x02\x12\x07\n\x03LED\x10\x03\"&\n\x07\x43ommand\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07\x63ommand\x18\x02 \x01(\t\"2\n\x07Message\x12\'\n\x07sensors\x18\x01 \x03(\x0b\x32\x16.com.sd.sensors.Sensor2K\n\rSensorService\x12:\n\x04Send\x12\x17.com.sd.sensors.Command\x1a\x17.com.sd.sensors.Message\"\x00\x42\"\n\x0e\x63om.sd.sensorsB\x0bSensorProtoP\x01\x88\x01\x01\x62\x06proto3')
 )
 
 
@@ -223,18 +223,18 @@ _sym_db.RegisterMessage(Message)
 
 DESCRIPTOR._options = None
 
-_SENSORSERVICEGRPC = _descriptor.ServiceDescriptor(
-  name='SensorServiceGRPC',
-  full_name='com.sd.sensors.SensorServiceGRPC',
+_SENSORSERVICE = _descriptor.ServiceDescriptor(
+  name='SensorService',
+  full_name='com.sd.sensors.SensorService',
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
   serialized_start=320,
-  serialized_end=399,
+  serialized_end=395,
   methods=[
   _descriptor.MethodDescriptor(
     name='Send',
-    full_name='com.sd.sensors.SensorServiceGRPC.Send',
+    full_name='com.sd.sensors.SensorService.Send',
     index=0,
     containing_service=None,
     input_type=_COMMAND,
@@ -242,8 +242,8 @@ _SENSORSERVICEGRPC = _descriptor.ServiceDescriptor(
     serialized_options=None,
   ),
 ])
-_sym_db.RegisterServiceDescriptor(_SENSORSERVICEGRPC)
+_sym_db.RegisterServiceDescriptor(_SENSORSERVICE)
 
-DESCRIPTOR.services_by_name['SensorServiceGRPC'] = _SENSORSERVICEGRPC
+DESCRIPTOR.services_by_name['SensorService'] = _SENSORSERVICE
 
 # @@protoc_insertion_point(module_scope)

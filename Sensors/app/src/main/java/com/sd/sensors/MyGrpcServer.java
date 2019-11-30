@@ -12,8 +12,10 @@ import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.netty.NettyServerBuilder;
 
-public class MyRpcServer {
-    private static final Logger logger = Logger.getLogger(MyRpcServer.class.getName());
+import static io.grpc.ServerInterceptors.intercept;
+
+public class MyGrpcServer {
+    private static final Logger logger = Logger.getLogger(MyGrpcServer.class.getName());
     private int port = 8092;
     private Server server;
 
@@ -29,19 +31,18 @@ public class MyRpcServer {
                 }
             };
             server = NettyServerBuilder.forPort(port)
-                    .addService(new MyGrpcServiceImpl(act))
-                    //.addService(ServerInterceptors.intercept(new MyGrpcServiceImpl(act),si))
+                     .addService(new MyGrpcServiceImpl(act))
                     .build()
                     .start();
             logger.info("Server started, listening on " + port);
             Runtime.getRuntime().addShutdownHook(new Thread(){
                 @Override
                 public void run() {
-                    MyRpcServer.this.stop();
+                    MyGrpcServer.this.stop();
                 }
             });
         }catch(Exception e){
-            System.err.println(e.getMessage());
+            logger.warning(e.getMessage());
         }
     }
 
@@ -58,7 +59,7 @@ public class MyRpcServer {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        final MyRpcServer my = new MyRpcServer();
+        final MyGrpcServer my = new MyGrpcServer();
         my.start(null);
         my.blockUntilShutdown();
     }

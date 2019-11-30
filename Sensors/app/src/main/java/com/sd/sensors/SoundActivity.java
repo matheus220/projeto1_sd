@@ -30,7 +30,7 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 
-public class SoundActivity extends AppCompatActivity {
+public class SoundActivity extends AppCompatActivity implements Activator {
 
     final String STRING_SENSOR_TYPE = "SOUND";
 
@@ -77,6 +77,8 @@ public class SoundActivity extends AppCompatActivity {
     Connection connection2 = null;
     Channel channel2 = null;
 
+    final MyGrpcServer myServer = new MyGrpcServer();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -112,9 +114,6 @@ public class SoundActivity extends AppCompatActivity {
             }
         });
 
-        UDPListener();
-        establishConnection();
-
         WifiManager wifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifi != null){
             lock = wifi.createMulticastLock("HelloAndroid");
@@ -129,8 +128,16 @@ public class SoundActivity extends AppCompatActivity {
         mTextFrequency = findViewById(R.id.textView);
         mTextFrequency.setText("Data sent every "+(seekBar.getProgress() + 1)+" second(s)");
 
+        UDPListener();
+        establishConnection();
         publishToAMQP();
         RPCServer();
+
+        try{
+            myServer.start(this);
+        }catch (Exception e){
+            System.err.println(e.getMessage());
+        }
     }
 
     SeekBar.OnSeekBarChangeListener seekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
@@ -231,6 +238,7 @@ public class SoundActivity extends AppCompatActivity {
         active = false;
         if (mediaPlayer != null) mediaPlayer.release();
         closeConnection();
+        myServer.stop();
         super.onDestroy();
     }
 
@@ -259,6 +267,8 @@ public class SoundActivity extends AppCompatActivity {
 
         Thread thread = new Thread(() -> {
             int attemptsCounter = 0;
+            mTextConnection.post(() -> mTextConnection.setText(
+                    "CONNECTING..."));
             while(gatewayAddr.isEmpty() && attemptsCounter < 10) {
                 try {
                     Thread.sleep(1500 + attemptsCounter*500);
@@ -268,8 +278,11 @@ public class SoundActivity extends AppCompatActivity {
                 }
             }
 
-            if(gatewayAddr.isEmpty())
+            if(gatewayAddr.isEmpty()) {
+                mTextConnection.post(() -> mTextConnection.setText(
+                        "NO GATEWAY FOUND"));
                 return;
+            }
 
             if (factory == null) {
                 factory = new ConnectionFactory();
@@ -316,8 +329,6 @@ public class SoundActivity extends AppCompatActivity {
                                 "CONNECTED"));
                         Thread.sleep((int)(1/frequency)*1000);
                     } else {
-                        mTextConnection.post(() -> mTextConnection.setText(
-                                "NOT CONNECTED"));
                         Thread.sleep(1000);
                     }
                 } catch (InterruptedException e) {
@@ -338,7 +349,7 @@ public class SoundActivity extends AppCompatActivity {
             try {
                 while(factory == null) {
                     try {
-                        Thread.sleep(3000);
+                        Thread.sleep(2000);
                     } catch (InterruptedException e) {
                         System.out.println("Interrupted: " + e.getMessage());
                     }
@@ -347,6 +358,7 @@ public class SoundActivity extends AppCompatActivity {
                 channel2 = connection.createChannel();
 
                 channel2.queueDeclare(rpc_queue, false, true, true, null);
+                channel2.basicQos(1);
                 Log.e("RPC", " [*] Waiting for messages. To exit press CTRL+C");
 
                 DeliverCallback deliverCallback = (consumerTag, delivery) -> {
@@ -373,9 +385,10 @@ public class SoundActivity extends AppCompatActivity {
                         String routingKey = deviceID + "." + STRING_SENSOR_TYPE.toLowerCase();
                         channel2.basicPublish(EXCHANGE_NAME, routingKey,
                                 null, msg_out.getBytes("UTF-8"));
+                        channel2.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
                     }
                 };
-                channel2.basicConsume(rpc_queue, true, deliverCallback, consumerTag -> { });
+                channel2.basicConsume(rpc_queue, false, deliverCallback, consumerTag -> { });
             } catch(IOException | TimeoutException e) {
                 System.out.println("IOException: " + e.getMessage());
             }
@@ -436,4 +449,19 @@ public class SoundActivity extends AppCompatActivity {
     }
 
 
+    @Override
+    public void Do(String... params) {
+        if(params.length > 0){
+            if (params[0].equals("toggle")) {
+                System.out.println("toggle");
+                toggle();
+            }else if(params[0].equals("volup")){
+                System.out.println("up");
+                volumeUp();
+            }else if(params[0].equals("voldown")){
+                System.out.println("down");
+                volumeDown();
+            }
+        }
+    }
 }

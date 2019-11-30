@@ -87,13 +87,15 @@ public class LedActivity extends AppCompatActivity implements Activator {
     Connection connection2 = null;
     Channel channel2 = null;
 
-    final MyRpcServer myServer = new MyRpcServer();
+    final MyGrpcServer myServer = new MyGrpcServer();
     private static final Logger logger = Logger.getLogger(MainActivity.class.getName());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_led);
+
+
 
         mTextLastSent = findViewById(R.id.label_last_time);
         mTextLastSent.setText("No messages sent");
@@ -115,12 +117,12 @@ public class LedActivity extends AppCompatActivity implements Activator {
         try{
             myServer.start(this);
         }catch(Exception e){
-            throw new RuntimeException(e);
+            logger.warning(e.getMessage());
         }
 
         UDPListener();
         establishConnection();
-
+        
         deviceID = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
 
         active = true;
@@ -167,6 +169,8 @@ public class LedActivity extends AppCompatActivity implements Activator {
         mTextFrequency = findViewById(R.id.textView);
         mTextFrequency.setText("Data sent every "+(seekBar.getProgress() + 1)+" second(s)");
 
+        UDPListener();
+        establishConnection();
         publishToAMQP();
         RPCServer();
     }
@@ -276,6 +280,8 @@ public class LedActivity extends AppCompatActivity implements Activator {
 
         Thread thread = new Thread(() -> {
             int attemptsCounter = 0;
+            mTextConnection.post(() -> mTextConnection.setText(
+                    "CONNECTING..."));
             while(gatewayAddr.isEmpty() && attemptsCounter < 10) {
                 try {
                     Thread.sleep(1500 + attemptsCounter*500);
@@ -285,8 +291,11 @@ public class LedActivity extends AppCompatActivity implements Activator {
                 }
             }
 
-            if(gatewayAddr.isEmpty())
+            if(gatewayAddr.isEmpty()) {
+                mTextConnection.post(() -> mTextConnection.setText(
+                        "NO GATEWAY FOUND"));
                 return;
+            }
 
             if (factory == null) {
                 factory = new ConnectionFactory();
@@ -332,8 +341,6 @@ public class LedActivity extends AppCompatActivity implements Activator {
                                 "CONNECTED"));
                         Thread.sleep((int)(1/frequency)*1000);
                     } else {
-                        mTextConnection.post(() -> mTextConnection.setText(
-                                "NOT CONNECTED"));
                         Thread.sleep(1000);
                     }
                 } catch (InterruptedException e) {
@@ -354,7 +361,7 @@ public class LedActivity extends AppCompatActivity implements Activator {
             try {
                 while(factory == null) {
                     try {
-                        Thread.sleep(3000);
+                        Thread.sleep(2000);
                     } catch (InterruptedException e) {
                         System.out.println("Interrupted: " + e.getMessage());
                     }
@@ -363,6 +370,7 @@ public class LedActivity extends AppCompatActivity implements Activator {
                 channel2 = connection.createChannel();
 
                 channel2.queueDeclare(rpc_queue, false, true, true, null);
+                channel2.basicQos(1);
                 Log.e("RPC", " [*] Waiting for messages. To exit press CTRL+C");
 
                 DeliverCallback deliverCallback = (consumerTag, delivery) -> {
@@ -382,9 +390,10 @@ public class LedActivity extends AppCompatActivity implements Activator {
                         String routingKey = deviceID + "." + STRING_SENSOR_TYPE.toLowerCase();
                         channel2.basicPublish(EXCHANGE_NAME, routingKey,
                                 null, msg_out.getBytes("UTF-8"));
+                        channel2.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
                     }
                 };
-                channel2.basicConsume(rpc_queue, true, deliverCallback, consumerTag -> { });
+                channel2.basicConsume(rpc_queue, false, deliverCallback, consumerTag -> { });
             } catch(IOException | TimeoutException e) {
                 System.out.println("IOException: " + e.getMessage());
             }
@@ -445,10 +454,10 @@ public class LedActivity extends AppCompatActivity implements Activator {
     }
 
     @Override
-    public void Do() {
+    public void Do(String... params) {
         toggle();
     }
-
+/*
     private class GrpcTask extends AsyncTask<Void, Void, String> {
 
         private String mHost = "";
@@ -490,6 +499,6 @@ public class LedActivity extends AppCompatActivity implements Activator {
             }
         }
     }
-
+*/
 
 }

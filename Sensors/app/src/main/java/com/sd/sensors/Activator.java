@@ -1,5 +1,5 @@
 package com.sd.sensors;
 
 public interface Activator {
-    void Do();
+    void Do(String... params);
 }

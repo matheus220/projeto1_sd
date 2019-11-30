@@ -82,9 +82,6 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
         mTextLastSent = findViewById(R.id.label_last_time);
         mTextLastSent.setText("No messages sent");
 
-        UDPListener();
-        establishConnection();
-
         deviceID = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
 
         active = true;
@@ -127,6 +124,8 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
         mTextFrequency = findViewById(R.id.textView);
         mTextFrequency.setText("Data sent every "+(seekBar.getProgress() + 1)+" second(s)");
 
+        UDPListener();
+        establishConnection();
         publishToAMQP();
     }
 
@@ -234,6 +233,8 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
 
         Thread thread = new Thread(() -> {
             int attemptsCounter = 0;
+            mTextConnection.post(() -> mTextConnection.setText(
+                    "CONNECTING..."));
             while(gatewayAddr.isEmpty() && attemptsCounter < 10) {
                 try {
                     Thread.sleep(1500 + attemptsCounter*500);
@@ -243,8 +244,11 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
                 }
             }
 
-            if(gatewayAddr.isEmpty())
+            if(gatewayAddr.isEmpty()) {
+                mTextConnection.post(() -> mTextConnection.setText(
+                        "NO GATEWAY FOUND"));
                 return;
+            }
 
             if (factory == null) {
                 factory = new ConnectionFactory();
@@ -285,8 +289,6 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
                                 "CONNECTED"));
                         Thread.sleep((int)(1/frequency)*1000);
                     } else {
-                        mTextConnection.post(() -> mTextConnection.setText(
-                                "NOT CONNECTED"));
                         Thread.sleep(1000);
                     }
                 } catch (InterruptedException e) {

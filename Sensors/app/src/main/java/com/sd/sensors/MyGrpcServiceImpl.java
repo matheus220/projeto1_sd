@@ -1,10 +1,10 @@
 package com.sd.sensors;
 
-import com.sd.sensors.SensorServiceGRPCGrpc.SensorServiceGRPCImplBase;
+//import com.sd.sensors.SensorServiceGRPCGrpc.SensorServiceGRPCImplBase;
 
 import io.grpc.stub.StreamObserver;
 
-public class MyGrpcServiceImpl extends SensorServiceGRPCImplBase {
+public class MyGrpcServiceImpl extends SensorServiceGrpc.SensorServiceImplBase {
 
     private Activator act;
 
@@ -16,16 +16,43 @@ public class MyGrpcServiceImpl extends SensorServiceGRPCImplBase {
         this.act = activator;
     }
 
-
-
     @Override
-    public void send(Command request, StreamObserver<Message> responseObserver){
+    public void send(Command request, StreamObserver<Message> responseObserver) {
+        System.out.println(request);
+        System.out.println("GRPC call.");
+
+        String command = request.getCommand();
+        String[] infos = command.split(",");
+
+        if(infos.length > 1){
+
+            String act = infos[1];
+            this.act.Do(new String[] { act });
+        }else{
+            this.act.Do();
+        }
+
+        //this.act.Do();
+
+        Sensor s = Sensor.newBuilder().setData("Sensor Ativado").build();
+        Message response = Message.newBuilder().addSensors(s).build();
+
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+
+    }
+
+    /*
+    public void send(Object request, StreamObserver<Object> responseObserver){
         System.out.println(request);
         System.out.println("someone called me");
 
+
+
         String comm = request.getCommand();
 
-        Sensor s = Sensor.newBuilder().setData("Sensor Ativado").build();
+        Object s = Sensor.newBuilder().setData("Sensor Ativado").build();
 
 
 
@@ -37,5 +64,5 @@ public class MyGrpcServiceImpl extends SensorServiceGRPCImplBase {
         responseObserver.onCompleted();
 
     }
-
+*/
 }
