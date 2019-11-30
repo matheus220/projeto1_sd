@@ -82,8 +82,6 @@ public class MagneticActivity extends AppCompatActivity implements SensorEventLi
         mTextLastSent = findViewById(R.id.label_last_time);
         mTextLastSent.setText("No messages sent");
 
-        UDPListener();
-        establishConnection();
         deviceID = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
 
         active = true;
