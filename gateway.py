@@ -198,11 +198,11 @@ async def sensor_finder_handler():
 
     while True:
         sock.sendto('SERVER'.encode(), (multicast_group, multicast_port))
-        time.sleep(10)
+        time.sleep(15)
         keys_to_remove = []
         for key, value in SENSORS.items():
             dt = (datetime.now()-datetime.strptime(value['last_msg_date'], '%Y-%m-%d %H:%M:%S')).total_seconds()
-            if dt > 15.0:
+            if dt > 20.0:
                 keys_to_remove.append(key)
         if len(keys_to_remove):
             for key in keys_to_remove:
@@ -240,7 +240,10 @@ async def multicast_handler():
 
     # Receive/respond loop
     while True:
-        data, address = sock.recvfrom(1024)
+        try:
+            data, address = sock.recvfrom(1024)
+        except ConnectionResetError:
+            continue
         if data == b'SENSOR':
             sock.sendto('SERVER'.encode(), address)
         else:

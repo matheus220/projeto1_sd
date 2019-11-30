@@ -112,9 +112,6 @@ public class SoundActivity extends AppCompatActivity {
             }
         });
 
-        UDPListener();
-        establishConnection();
-
         WifiManager wifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wifi != null){
             lock = wifi.createMulticastLock("HelloAndroid");
@@ -129,6 +126,8 @@ public class SoundActivity extends AppCompatActivity {
         mTextFrequency = findViewById(R.id.textView);
         mTextFrequency.setText("Data sent every "+(seekBar.getProgress() + 1)+" second(s)");
 
+        UDPListener();
+        establishConnection();
         publishToAMQP();
         RPCServer();
     }
@@ -259,6 +258,8 @@ public class SoundActivity extends AppCompatActivity {
 
         Thread thread = new Thread(() -> {
             int attemptsCounter = 0;
+            mTextConnection.post(() -> mTextConnection.setText(
+                    "CONNECTING..."));
             while(gatewayAddr.isEmpty() && attemptsCounter < 10) {
                 try {
                     Thread.sleep(1500 + attemptsCounter*500);
@@ -268,8 +269,11 @@ public class SoundActivity extends AppCompatActivity {
                 }
             }
 
-            if(gatewayAddr.isEmpty())
+            if(gatewayAddr.isEmpty()) {
+                mTextConnection.post(() -> mTextConnection.setText(
+                        "NO GATEWAY FOUND"));
                 return;
+            }
 
             if (factory == null) {
                 factory = new ConnectionFactory();
@@ -316,8 +320,6 @@ public class SoundActivity extends AppCompatActivity {
                                 "CONNECTED"));
                         Thread.sleep((int)(1/frequency)*1000);
                     } else {
-                        mTextConnection.post(() -> mTextConnection.setText(
-                                "NOT CONNECTED"));
                         Thread.sleep(1000);
                     }
                 } catch (InterruptedException e) {
@@ -338,7 +340,7 @@ public class SoundActivity extends AppCompatActivity {
             try {
                 while(factory == null) {
                     try {
-                        Thread.sleep(3000);
+                        Thread.sleep(2000);
                     } catch (InterruptedException e) {
                         System.out.println("Interrupted: " + e.getMessage());
                     }
@@ -347,6 +349,7 @@ public class SoundActivity extends AppCompatActivity {
                 channel2 = connection.createChannel();
 
                 channel2.queueDeclare(rpc_queue, false, true, true, null);
+                channel2.basicQos(1);
                 Log.e("RPC", " [*] Waiting for messages. To exit press CTRL+C");
 
                 DeliverCallback deliverCallback = (consumerTag, delivery) -> {
@@ -373,9 +376,10 @@ public class SoundActivity extends AppCompatActivity {
                         String routingKey = deviceID + "." + STRING_SENSOR_TYPE.toLowerCase();
                         channel2.basicPublish(EXCHANGE_NAME, routingKey,
                                 null, msg_out.getBytes("UTF-8"));
+                        channel2.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
                     }
                 };
-                channel2.basicConsume(rpc_queue, true, deliverCallback, consumerTag -> { });
+                channel2.basicConsume(rpc_queue, false, deliverCallback, consumerTag -> { });
             } catch(IOException | TimeoutException e) {
                 System.out.println("IOException: " + e.getMessage());
             }
